@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Teste Bluetooth</title></head>
+<body>
+  <button id="connect">Conectar impressora</button>
+  <pre id="log"></pre>
+  <script>
+    const log = (msg) => { document.getElementById('log').textContent += msg + '\n'; console.log(msg); };
+
+    document.getElementById('connect').addEventListener('click', async () => {
+      try {
+        const device = await navigator.bluetooth.requestDevice({
+          acceptAllDevices: true,
+          optionalServices: [0x18F0, '000018f0-0000-1000-8000-00805f9b34fb']
+        });
+        log('Dispositivo encontrado: ' + device.name);
+        const server = await device.gatt.connect();
+        log('GATT conectado');
+        const services = await server.getPrimaryServices();
+        for (const service of services) {
+          log('Service UUID: ' + service.uuid);
+          const chars = await service.getCharacteristics();
+          for (const c of chars) log('  Characteristic UUID: ' + c.uuid + ' properties: ' + JSON.stringify(c.properties));
+        }
+      } catch (err) {
+        log('ERRO: ' + err.message);
+      }
+    });
+  </script>
+</body>
+</html>
