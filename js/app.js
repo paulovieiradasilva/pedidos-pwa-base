@@ -29,6 +29,21 @@ document.addEventListener('alpine:init', () => {
       this.address = customer ? customer.address : '';
     },
 
+    orderTotal() {
+      const selectedProduct = this.products.find(p => p.id === this.selectedProductId);
+      return selectedProduct ? selectedProduct.price * this.qty : 0;
+    },
+
+    resetForm() {
+      this.phone = '';
+      this.address = '';
+      this.newAddress = '';
+      this.qty = 1;
+      this.paymentMethod = 'dinheiro';
+      this.changeFor = null;
+      this.selectedProductId = this.products.length > 0 ? this.products[0].id : '';
+    },
+
     async confirmOrder() {
       if (!this.phone) {
         this.statusMessage = 'Informe o telefone antes de confirmar.';
@@ -79,6 +94,7 @@ document.addEventListener('alpine:init', () => {
         this.statusMessage = 'Pedido salvo, mas falha ao imprimir: ' + err.message + '. Copie manualmente: ' + new TextDecoder('windows-1252').decode(bytes);
       }
 
+      this.resetForm();
       await this.refreshTodayOrders();
     },
 

@@ -72,6 +72,8 @@
       </div>
     </template>
 
+    <p class="text-lg font-bold mb-2" x-text="'Total: R$ ' + orderTotal().toFixed(2)"></p>
+
     <button
       class="bg-blue-600 text-white p-3 w-full rounded"
       @click="confirmOrder()"
