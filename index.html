@@ -44,12 +44,12 @@
             :class="showProductForm ? 'border border-blue-200 text-blue-700 bg-white' : 'bg-blue-600 text-white'"
             @click="showProductForm ? closeProductForm() : openNewProductForm()"
           >
-            <span x-text="showProductForm ? 'Cancelar' : '+ Novo produto'"></span>
+            <span x-html="showProductForm ? 'Cancelar' : icon('add') + ' Novo produto'"></span>
           </button>
         </div>
 
         <template x-if="showProductForm">
-          <div class="bg-white border rounded-2xl shadow-sm p-3 mb-4">
+          <div class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4">
             <h2
               class="font-medium text-sm mb-2"
               x-text="productForm.id ? 'Editar produto' : 'Novo produto'"
@@ -78,7 +78,7 @@
               <div>
                 <label class="block mb-1 text-sm">Preço</label>
                 <div class="flex items-center gap-2 mb-1">
-                  <span class="w-24 text-sm shrink-0">💵 Dinheiro</span>
+                  <span class="w-24 text-sm shrink-0" x-html="icon('dinheiro') + ' Dinheiro'"></span>
                   <input
                     type="number"
                     step="0.01"
@@ -100,7 +100,7 @@
                   />
                 </div>
                 <div class="flex items-center gap-2 mb-2">
-                  <span class="w-24 text-sm shrink-0">💳 Cartão</span>
+                  <span class="w-24 text-sm shrink-0" x-html="icon('cartao') + ' Cartão'"></span>
                   <input
                     type="number"
                     step="0.01"
@@ -174,7 +174,7 @@
         <div class="flex flex-col gap-2">
           <template x-for="p in filteredProductList()" :key="p.id">
             <div
-              class="bg-white border rounded-2xl shadow-sm p-3"
+              class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3"
               :class="!p.active && 'opacity-50'"
             >
               <div class="flex justify-between items-start gap-2">
@@ -189,19 +189,17 @@
                 </div>
                 <div class="flex gap-1 shrink-0">
                   <button
-                    class="bg-gray-100 rounded-lg w-8 h-8 text-sm"
+                    class="bg-gray-100 rounded-lg w-8 h-8 text-sm flex items-center justify-center"
                     aria-label="Editar"
+                    x-html="icon('edit')"
                     @click="startEditProduct(p)"
-                  >
-                    ✎
-                  </button>
+                  ></button>
                   <button
-                    class="bg-gray-100 rounded-lg w-8 h-8 text-sm"
+                    class="bg-gray-100 rounded-lg w-8 h-8 text-sm flex items-center justify-center"
                     :aria-label="p.active ? 'Desativar' : 'Ativar'"
+                    x-html="icon('power')"
                     @click="toggleProductActive(p)"
-                  >
-                    ⏻
-                  </button>
+                  ></button>
                 </div>
               </div>
               <div class="flex gap-1 mt-2 flex-wrap">
@@ -216,7 +214,7 @@
                     class="text-xs px-2 py-1 rounded-full"
                     :class="paymentMethodPillClass('dinheiro')"
                     title="Dinheiro"
-                    x-text="paymentMethodIcon('dinheiro') + ' R$ ' + p.prices.dinheiro.toFixed(2)"
+                    x-html="icon('dinheiro') + ' R$ ' + p.prices.dinheiro.toFixed(2)"
                   ></span>
                 </template>
                 <template x-if="!p.soldByWeight">
@@ -224,7 +222,7 @@
                     class="text-xs px-2 py-1 rounded-full"
                     :class="paymentMethodPillClass('pix')"
                     title="Pix"
-                    x-text="paymentMethodIcon('pix') + ' R$ ' + p.prices.pix.toFixed(2)"
+                    x-text="'Pix R$ ' + p.prices.pix.toFixed(2)"
                   ></span>
                 </template>
                 <template x-if="!p.soldByWeight">
@@ -232,7 +230,7 @@
                     class="text-xs px-2 py-1 rounded-full"
                     :class="paymentMethodPillClass('cartao')"
                     title="Cartão"
-                    x-text="paymentMethodIcon('cartao') + ' R$ ' + p.prices.cartao.toFixed(2)"
+                    x-html="icon('cartao') + ' R$ ' + p.prices.cartao.toFixed(2)"
                   ></span>
                 </template>
               </div>
@@ -253,13 +251,13 @@
             :class="showOrderForm ? 'border border-blue-200 text-blue-700 bg-white' : 'bg-blue-600 text-white'"
             @click="showOrderForm ? closeOrderForm() : openNewOrderForm()"
           >
-            <span x-text="showOrderForm ? 'Cancelar' : '+ Novo pedido'"></span>
+            <span x-html="showOrderForm ? 'Cancelar' : icon('add') + ' Novo pedido'"></span>
           </button>
         </div>
 
         <template x-if="showOrderForm">
           <div>
-            <div class="bg-white border rounded-2xl shadow-sm p-3 mb-4">
+            <div class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4">
               <label class="block mb-1 text-sm">Telefone</label>
               <div class="relative mb-1">
                 <input
@@ -353,13 +351,12 @@
               <button
                 type="button"
                 class="border border-gray-300 text-gray-700 bg-white p-2 w-full rounded-lg text-sm font-medium"
+                x-html="icon('add') + ' Adicionar item'"
                 @click="addCartItem()"
-              >
-                + Adicionar item
-              </button>
+              ></button>
             </div>
 
-            <div class="bg-white border rounded-2xl shadow-sm p-3 mb-4">
+            <div class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4">
               <h2 class="font-medium text-sm mb-2">Itens do pedido</h2>
               <template x-if="cartItems.length === 0">
                 <p class="text-sm text-gray-600">Nenhum item adicionado ainda.</p>
@@ -377,29 +374,27 @@
                       </template>
                       <button
                         type="button"
-                        class="text-gray-500 w-6 h-6"
+                        class="text-gray-500 w-6 h-6 flex items-center justify-center"
                         aria-label="Remover item"
+                        x-html="icon('close')"
                         @click="removeCartItem(index)"
-                      >
-                        ✕
-                      </button>
+                      ></button>
                     </span>
                   </div>
                 </template>
               </div>
             </div>
 
-            <div class="bg-white border rounded-2xl shadow-sm p-3 mb-4">
+            <div class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4">
               <label class="block mb-1 text-sm">Pagamento</label>
               <div class="flex gap-2">
                 <button
                   type="button"
                   class="flex-1 p-2 rounded-lg text-sm font-medium"
                   :class="paymentButtonClass('dinheiro')"
+                  x-html="icon('dinheiro') + ' Dinheiro'"
                   @click="paymentMethod = 'dinheiro'"
-                >
-                  💵 Dinheiro
-                </button>
+                ></button>
                 <button
                   type="button"
                   class="flex-1 p-2 rounded-lg text-sm font-medium"
@@ -412,10 +407,9 @@
                   type="button"
                   class="flex-1 p-2 rounded-lg text-sm font-medium"
                   :class="paymentButtonClass('cartao')"
+                  x-html="icon('cartao') + ' Cartão'"
                   @click="paymentMethod = 'cartao'"
-                >
-                  💳 Cartão
-                </button>
+                ></button>
               </div>
 
               <template x-if="paymentMethod === 'dinheiro'">
@@ -520,7 +514,7 @@
               x-model="paymentFilter.dinheiro"
               @change="onFilterChange()"
             />
-            <span aria-hidden="true">💵</span>
+            <span aria-hidden="true" x-html="icon('dinheiro')"></span>
           </label>
           <label
             class="flex items-center gap-1 border rounded-full px-3 py-1 cursor-pointer"
@@ -546,7 +540,7 @@
               x-model="paymentFilter.cartao"
               @change="onFilterChange()"
             />
-            <span aria-hidden="true">💳</span>
+            <span aria-hidden="true" x-html="icon('cartao')"></span>
           </label>
         </div>
 
@@ -564,7 +558,7 @@
         <div class="flex flex-col gap-2">
           <template x-for="o in visibleOrders()" :key="o.id">
             <div
-              class="bg-white border rounded-2xl shadow-sm p-2 border-l-4"
+              class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-2 border-l-4"
               :class="paymentMethodAccentClass(o.paymentMethod)"
             >
               <div class="flex justify-between items-baseline gap-2">
@@ -602,7 +596,7 @@
                   class="text-xs font-medium"
                   :class="paymentMethodTextClass(o.paymentMethod)"
                   :title="paymentMethodLabel(o.paymentMethod)"
-                  x-text="paymentMethodIcon(o.paymentMethod)"
+                  x-html="o.paymentMethod === 'pix' ? 'Pix' : icon(o.paymentMethod)"
                 ></span>
                 <div class="flex gap-3 text-xs font-medium">
                   <template x-if="orderStatusTab === 'pendente' || orderStatusTab === 'impresso'">
