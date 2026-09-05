@@ -42,12 +42,29 @@ document.addEventListener('alpine:init', () => {
         this.products = await listProducts();
         await this.refreshOrders();
       } else if (view === 'novoPedido') {
+        this.products = await listProducts();
         this.activeProducts = await listActiveProducts();
       }
     },
 
+    formatPhoneMask(value) {
+      const digits = value.replace(/\D/g, '').slice(0, 11);
+      if (digits.length <= 2) return digits;
+      if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+      if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+    },
+
+    onPhoneInput(value) {
+      this.phone = this.formatPhoneMask(value);
+    },
+
+    phoneDigits() {
+      return this.phone.replace(/\D/g, '');
+    },
+
     async lookupCustomer() {
-      const customer = await findCustomerByPhone(this.phone);
+      const customer = await findCustomerByPhone(this.phoneDigits());
       this.address = customer ? customer.address : '';
     },
 
@@ -68,8 +85,9 @@ document.addEventListener('alpine:init', () => {
     },
 
     async confirmOrder() {
-      if (!this.phone) {
-        this.statusMessage = 'Informe o telefone antes de confirmar.';
+      const phoneDigits = this.phoneDigits();
+      if (phoneDigits.length !== 10 && phoneDigits.length !== 11) {
+        this.statusMessage = 'Informe um telefone válido com DDD.';
         return;
       }
 
@@ -104,7 +122,7 @@ document.addEventListener('alpine:init', () => {
       }
 
       if (!this.address && this.newAddress) {
-        await saveCustomer(this.phone, this.newAddress);
+        await saveCustomer(phoneDigits, this.newAddress);
         this.address = this.newAddress;
       }
       if (!this.address) {
@@ -113,17 +131,18 @@ document.addEventListener('alpine:init', () => {
       }
 
       const order = await createOrder({
-        customerPhone: this.phone,
+        customerPhone: phoneDigits,
         address: this.address,
         items: [{ productId: this.selectedProductId, qty: this.qty }],
         paymentMethod: this.paymentMethod,
         changeFor: this.paymentMethod === 'dinheiro' ? this.changeFor : undefined
       });
 
-      const customer = { phone: this.phone, address: this.address };
-      const bytes = buildReceiptBytes(order, customer, this.products);
+      const customer = { phone: phoneDigits, address: this.address };
+      let bytes = null;
 
       try {
+        bytes = buildReceiptBytes(order, customer, this.products);
         if (!this.printerCharacteristic) {
           this.printerCharacteristic = await connectPrinter();
         }
@@ -131,7 +150,8 @@ document.addEventListener('alpine:init', () => {
         this.statusMessage = 'Pedido salvo e enviado para impressão.';
       } catch (err) {
         this.printerCharacteristic = null;
-        this.statusMessage = 'Pedido salvo, mas falha ao imprimir: ' + err.message + '. Copie manualmente: ' + new TextDecoder('windows-1252').decode(bytes);
+        this.statusMessage = 'Pedido salvo, mas falha ao imprimir: ' + err.message + '.'
+          + (bytes ? ' Copie manualmente: ' + new TextDecoder('windows-1252').decode(bytes) : '');
       }
 
       this.resetForm();
@@ -205,6 +225,10 @@ document.addEventListener('alpine:init', () => {
         pix: 'bg-blue-50 text-blue-700',
         cartao: 'bg-purple-50 text-purple-700'
       }[method] ?? 'bg-gray-100 text-gray-700';
+    },
+
+    paymentButtonClass(method) {
+      return this.paymentMethod === method ? this.paymentMethodPillClass(method) : 'bg-gray-100 text-gray-600';
     },
 
     resetProductForm() {
