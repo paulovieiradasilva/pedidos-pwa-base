@@ -208,9 +208,9 @@
                 </div>
               </div>
               <div class="flex gap-1 mt-2 flex-wrap">
-                <span class="text-xs px-2 py-1 rounded-full" :class="paymentMethodPillClass('dinheiro')" x-text="'Dinheiro R$ ' + p.prices.dinheiro.toFixed(2)"></span>
-                <span class="text-xs px-2 py-1 rounded-full" :class="paymentMethodPillClass('pix')" x-text="'Pix R$ ' + p.prices.pix.toFixed(2)"></span>
-                <span class="text-xs px-2 py-1 rounded-full" :class="paymentMethodPillClass('cartao')" x-text="'Cartão R$ ' + p.prices.cartao.toFixed(2)"></span>
+                <span class="text-xs px-2 py-1 rounded-full" :class="paymentMethodPillClass('dinheiro')" title="Dinheiro" x-text="paymentMethodIcon('dinheiro') + ' R$ ' + p.prices.dinheiro.toFixed(2)"></span>
+                <span class="text-xs px-2 py-1 rounded-full" :class="paymentMethodPillClass('pix')" title="Pix" x-text="paymentMethodIcon('pix') + ' R$ ' + p.prices.pix.toFixed(2)"></span>
+                <span class="text-xs px-2 py-1 rounded-full" :class="paymentMethodPillClass('cartao')" title="Cartão" x-text="paymentMethodIcon('cartao') + ' R$ ' + p.prices.cartao.toFixed(2)"></span>
               </div>
             </div>
           </template>
@@ -236,17 +236,17 @@
         </div>
 
         <div class="flex gap-3 mb-3 text-sm">
-          <label class="flex items-center gap-1">
+          <label class="flex items-center gap-1" title="Dinheiro">
             <input type="checkbox" x-model="paymentFilter.dinheiro" @change="onFilterChange()" />
-            Dinheiro
+            <span aria-hidden="true">💵</span>
           </label>
-          <label class="flex items-center gap-1">
+          <label class="flex items-center gap-1" title="Pix">
             <input type="checkbox" x-model="paymentFilter.pix" @change="onFilterChange()" />
-            Pix
+            <span aria-hidden="true">⚡</span>
           </label>
-          <label class="flex items-center gap-1">
+          <label class="flex items-center gap-1" title="Cartão">
             <input type="checkbox" x-model="paymentFilter.cartao" @change="onFilterChange()" />
-            Cartão
+            <span aria-hidden="true">💳</span>
           </label>
         </div>
 
@@ -269,7 +269,7 @@
               </template>
               <div class="flex justify-between items-baseline mt-1">
                 <span class="text-xs text-gray-600" x-text="orderSummary(o)"></span>
-                <span class="text-xs font-medium" :class="paymentMethodTextClass(o.paymentMethod)" x-text="paymentMethodLabel(o.paymentMethod)"></span>
+                <span class="text-xs font-medium" :class="paymentMethodTextClass(o.paymentMethod)" :title="paymentMethodLabel(o.paymentMethod)" x-text="paymentMethodIcon(o.paymentMethod)"></span>
               </div>
             </div>
           </template>

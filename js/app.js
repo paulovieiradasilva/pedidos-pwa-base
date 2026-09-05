@@ -179,6 +179,10 @@ document.addEventListener('alpine:init', () => {
       return { dinheiro: 'Dinheiro', pix: 'Pix', cartao: 'Cartão' }[method] ?? method;
     },
 
+    paymentMethodIcon(method) {
+      return { dinheiro: '💵', pix: '⚡', cartao: '💳' }[method] ?? '?';
+    },
+
     paymentMethodAccentClass(method) {
       return { dinheiro: 'border-l-green-600', pix: 'border-l-blue-600', cartao: 'border-l-purple-600' }[method] ?? 'border-l-gray-400';
     },
