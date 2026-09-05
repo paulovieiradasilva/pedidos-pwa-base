@@ -102,5 +102,5 @@ Após publicar a aplicação em produção (GitHub Pages ou qualquer servidor we
 
 - **Sem backend:** Todos os dados (clientes, produtos, pedidos) ficam no IndexedDB do navegador. Não há servidor.
 - **Sem leitura automática de WhatsApp:** O proprietário digita manualmente o número e pedido.
-- **Offline-first:** Service worker cacheeia assets na primeira visita; app continua funcionando sem rede.
+- **Offline-first:** Service worker cacheia assets na primeira visita; app continua funcionando sem rede.
 - **Impressora:** Única integração externa é via Bluetooth — não usa SPP (Bluetooth Clássico), apenas BLE GATT.
