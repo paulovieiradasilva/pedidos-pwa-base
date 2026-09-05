@@ -189,9 +189,11 @@ document.addEventListener('alpine:init', () => {
       this.phoneSuggestions = [];
     },
 
-    openNewOrderForm() {
+    async openNewOrderForm() {
       this.resetForm();
       this.showOrderForm = true;
+      this.customers = await listCustomers();
+      this.activeProducts = await listActiveProducts();
     },
 
     closeOrderForm() {
