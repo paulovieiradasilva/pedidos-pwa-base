@@ -3,6 +3,8 @@ const ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './vendor/tailwind.js',
+  './vendor/alpine.min.js',
   './js/db.js',
   './js/customers.js',
   './js/products.js',
