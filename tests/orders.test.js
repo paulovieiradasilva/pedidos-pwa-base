@@ -7,6 +7,16 @@ beforeEach(async () => {
 });
 
 describe('orders', () => {
+  it('stores the customer address given at creation time', async () => {
+    const order = await createOrder({
+      customerPhone: '11988887777',
+      address: 'Rua das Flores, 55',
+      items: [{ productId: 'agua-10', qty: 1 }],
+      paymentMethod: 'pix'
+    });
+    expect(order.address).toBe('Rua das Flores, 55');
+  });
+
   it('computes total using the price for the chosen payment method (dinheiro)', async () => {
     const order = await createOrder({
       customerPhone: '11988887777',

@@ -34,7 +34,7 @@
         :class="currentView === 'pedidosDoDia' ? 'bg-blue-600 text-white' : 'bg-gray-200'"
         @click="setView('pedidosDoDia')"
       >
-        Pedidos do Dia
+        Pedidos
       </button>
     </nav>
 
@@ -66,10 +66,7 @@
         <select class="border p-2 w-full mb-3" x-model="selectedProductId">
           <option value="" disabled>Selecione um produto</option>
           <template x-for="p in activeProducts" :key="p.id">
-            <option
-              :value="p.id"
-              x-text="p.name + ' ' + p.brand"
-            ></option>
+            <option :value="p.id" x-text="p.name + ' ' + p.brand"></option>
           </template>
         </select>
 
@@ -100,7 +97,10 @@
           </div>
         </template>
 
-        <p class="text-lg font-bold mb-2" x-text="'Total: R$ ' + orderTotal().toFixed(2)"></p>
+        <p
+          class="text-lg font-bold mb-2"
+          x-text="'Total: R$ ' + orderTotal().toFixed(2)"
+        ></p>
 
         <button
           class="bg-blue-600 text-white p-3 w-full rounded"
@@ -118,40 +118,93 @@
         <h1 class="text-xl font-bold mb-4">Produtos</h1>
 
         <div class="border rounded p-3 mb-4 bg-white">
-          <h2 class="font-bold mb-2" x-text="productForm.id ? 'Editar produto' : 'Novo produto'"></h2>
+          <h2
+            class="font-bold mb-2"
+            x-text="productForm.id ? 'Editar produto' : 'Novo produto'"
+          ></h2>
 
           <label class="block mb-1 text-sm">Nome</label>
-          <input type="text" class="border p-2 w-full mb-2" x-model="productForm.name" />
+          <input
+            type="text"
+            class="border p-2 w-full mb-2"
+            x-model="productForm.name"
+          />
 
           <label class="block mb-1 text-sm">Marca</label>
-          <input type="text" class="border p-2 w-full mb-2" x-model="productForm.brand" />
+          <input
+            type="text"
+            class="border p-2 w-full mb-2"
+            x-model="productForm.brand"
+          />
 
           <label class="block mb-1 text-sm">Preço Dinheiro</label>
-          <input type="number" step="0.01" class="border p-2 w-full mb-2" x-model.number="productForm.priceDinheiro" />
+          <input
+            type="number"
+            step="0.01"
+            class="border p-2 w-full mb-2"
+            x-model.number="productForm.priceDinheiro"
+          />
 
           <label class="block mb-1 text-sm">Preço Pix</label>
-          <input type="number" step="0.01" class="border p-2 w-full mb-2" x-model.number="productForm.pricePix" />
+          <input
+            type="number"
+            step="0.01"
+            class="border p-2 w-full mb-2"
+            x-model.number="productForm.pricePix"
+          />
 
           <label class="block mb-1 text-sm">Preço Cartão</label>
-          <input type="number" step="0.01" class="border p-2 w-full mb-2" x-model.number="productForm.priceCartao" />
+          <input
+            type="number"
+            step="0.01"
+            class="border p-2 w-full mb-2"
+            x-model.number="productForm.priceCartao"
+          />
 
           <p class="text-sm text-red-600 mb-2" x-text="productFormError"></p>
 
           <div class="flex gap-2">
-            <button class="bg-blue-600 text-white p-2 flex-1 rounded" @click="saveProductForm()">Salvar</button>
-            <button class="bg-gray-200 p-2 flex-1 rounded" @click="startCreateProduct()">Cancelar</button>
+            <button
+              class="bg-blue-600 text-white p-2 flex-1 rounded"
+              @click="saveProductForm()"
+            >
+              Salvar
+            </button>
+            <button
+              class="bg-gray-200 p-2 flex-1 rounded"
+              @click="startCreateProduct()"
+            >
+              Cancelar
+            </button>
           </div>
         </div>
 
         <template x-for="p in products" :key="p.id">
-          <div class="border-b py-2 text-sm flex justify-between items-start gap-2" :class="!p.active && 'opacity-50'">
+          <div
+            class="border-b py-2 text-sm flex justify-between items-start gap-2"
+            :class="!p.active && 'opacity-50'"
+          >
             <div>
-              <p class="font-bold" x-text="p.name + ' ' + p.brand + (p.active ? '' : ' (inativo)')"></p>
-              <p x-text="'Dinheiro: R$ ' + p.prices.dinheiro.toFixed(2) + ' | Pix: R$ ' + p.prices.pix.toFixed(2) + ' | Cartão: R$ ' + p.prices.cartao.toFixed(2)"></p>
+              <p
+                class="font-bold"
+                x-text="p.name + ' ' + p.brand + (p.active ? '' : ' (inativo)')"
+              ></p>
+              <p
+                x-text="'Dinheiro: R$ ' + p.prices.dinheiro.toFixed(2) + ' | Pix: R$ ' + p.prices.pix.toFixed(2) + ' | Cartão: R$ ' + p.prices.cartao.toFixed(2)"
+              ></p>
             </div>
             <div class="flex flex-col gap-1 shrink-0">
-              <button class="bg-gray-200 px-2 py-1 rounded text-xs" @click="startEditProduct(p)">Editar</button>
-              <button class="bg-gray-200 px-2 py-1 rounded text-xs" @click="toggleProductActive(p)" x-text="p.active ? 'Desativar' : 'Ativar'"></button>
+              <button
+                class="bg-gray-200 px-2 py-1 rounded text-xs"
+                @click="startEditProduct(p)"
+              >
+                Editar
+              </button>
+              <button
+                class="bg-gray-200 px-2 py-1 rounded text-xs"
+                @click="toggleProductActive(p)"
+                x-text="p.active ? 'Desativar' : 'Ativar'"
+              ></button>
             </div>
           </div>
         </template>
@@ -160,31 +213,38 @@
 
     <template x-if="currentView === 'pedidosDoDia'">
       <div>
-        <h1 class="text-xl font-bold mb-4">Pedidos de Hoje</h1>
+        <h1 class="text-xl font-bold mb-4">Pedidos</h1>
 
-        <div class="overflow-x-auto">
-          <table class="w-full text-sm">
-            <thead>
-              <tr class="text-left border-b">
-                <th class="py-1">Hora</th>
-                <th class="py-1">Telefone</th>
-                <th class="py-1">Itens</th>
-                <th class="py-1">Pagamento</th>
-                <th class="py-1">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <template x-for="o in visibleOrders()" :key="o.id">
-                <tr class="border-b">
-                  <td class="py-1" x-text="new Date(o.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })"></td>
-                  <td class="py-1" x-text="o.customerPhone"></td>
-                  <td class="py-1" x-text="o.items.length + ' item(s)'"></td>
-                  <td class="py-1" x-text="o.paymentMethod"></td>
-                  <td class="py-1" x-text="'R$ ' + o.total.toFixed(2)"></td>
-                </tr>
+        <div class="flex items-center gap-2 mb-3">
+          <input
+            type="date"
+            class="border p-2 flex-1"
+            x-model="selectedDate"
+            @change="refreshOrders()"
+          />
+          <span class="text-sm text-gray-600 whitespace-nowrap" x-text="todayOrders.length + ' pedido(s)'"></span>
+        </div>
+
+        <template x-if="todayOrders.length === 0">
+          <p class="text-sm text-gray-600">Nenhum pedido nesse dia.</p>
+        </template>
+
+        <div class="flex flex-col gap-2">
+          <template x-for="o in visibleOrders()" :key="o.id">
+            <div class="bg-white border rounded-lg p-2 border-l-4" :class="paymentMethodAccentClass(o.paymentMethod)">
+              <div class="flex justify-between items-baseline">
+                <span class="text-sm font-medium" x-text="new Date(o.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' · ' + o.customerPhone"></span>
+                <span class="text-base font-bold" x-text="'R$ ' + o.total.toFixed(2)"></span>
+              </div>
+              <template x-if="o.address">
+                <p class="text-xs text-gray-600 truncate" x-text="o.address"></p>
               </template>
-            </tbody>
-          </table>
+              <div class="flex justify-between items-baseline mt-1">
+                <span class="text-xs text-gray-600" x-text="orderSummary(o)"></span>
+                <span class="text-xs font-medium" :class="paymentMethodTextClass(o.paymentMethod)" x-text="paymentMethodLabel(o.paymentMethod)"></span>
+              </div>
+            </div>
+          </template>
         </div>
 
         <button

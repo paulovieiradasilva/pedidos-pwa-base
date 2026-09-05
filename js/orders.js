@@ -24,6 +24,7 @@ export async function createOrder(input) {
   const order = {
     id: crypto.randomUUID(),
     customerPhone: input.customerPhone,
+    address: input.address ?? null,
     items: input.items,
     paymentMethod: input.paymentMethod,
     changeFor: input.changeFor ?? null,

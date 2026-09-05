@@ -19,6 +19,7 @@ document.addEventListener('alpine:init', () => {
     statusMessage: '',
     todayOrders: [],
     visibleOrderCount: 15,
+    selectedDate: localDateString(new Date()),
     printerCharacteristic: null,
 
     productForm: { id: null, name: '', brand: '', priceDinheiro: null, pricePix: null, priceCartao: null },
@@ -34,7 +35,8 @@ document.addEventListener('alpine:init', () => {
       if (view === 'produtos') {
         this.products = await listProducts();
       } else if (view === 'pedidosDoDia') {
-        await this.refreshTodayOrders();
+        this.products = await listProducts();
+        await this.refreshOrders();
       } else if (view === 'novoPedido') {
         this.activeProducts = await listActiveProducts();
       }
@@ -108,6 +110,7 @@ document.addEventListener('alpine:init', () => {
 
       const order = await createOrder({
         customerPhone: this.phone,
+        address: this.address,
         items: [{ productId: this.selectedProductId, qty: this.qty }],
         paymentMethod: this.paymentMethod,
         changeFor: this.paymentMethod === 'dinheiro' ? this.changeFor : undefined
@@ -129,12 +132,13 @@ document.addEventListener('alpine:init', () => {
 
       this.resetForm();
       this.activeProducts = await listActiveProducts();
-      await this.refreshTodayOrders();
+      if (this.selectedDate === localDateString(new Date())) {
+        await this.refreshOrders();
+      }
     },
 
-    async refreshTodayOrders() {
-      const today = localDateString(new Date());
-      this.todayOrders = await listOrdersForDay(today);
+    async refreshOrders() {
+      this.todayOrders = await listOrdersForDay(this.selectedDate);
       this.visibleOrderCount = 15;
     },
 
@@ -144,6 +148,27 @@ document.addEventListener('alpine:init', () => {
 
     showMoreOrders() {
       this.visibleOrderCount += 15;
+    },
+
+    orderSummary(order) {
+      return order.items
+        .map(item => {
+          const product = this.products.find(p => p.id === item.productId);
+          return product ? `${item.qty}x ${product.name} ${product.brand}` : `${item.qty}x Produto removido`;
+        })
+        .join(', ');
+    },
+
+    paymentMethodLabel(method) {
+      return { dinheiro: 'Dinheiro', pix: 'Pix', cartao: 'Cartão' }[method] ?? method;
+    },
+
+    paymentMethodAccentClass(method) {
+      return { dinheiro: 'border-l-green-600', pix: 'border-l-blue-600', cartao: 'border-l-purple-600' }[method] ?? 'border-l-gray-400';
+    },
+
+    paymentMethodTextClass(method) {
+      return { dinheiro: 'text-green-700', pix: 'text-blue-700', cartao: 'text-purple-700' }[method] ?? 'text-gray-600';
     },
 
     startCreateProduct() {
