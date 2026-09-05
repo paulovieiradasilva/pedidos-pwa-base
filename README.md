@@ -106,12 +106,20 @@ Além disso, em `js/printer.js`:
 └── .gitignore            # Arquivos ignorados pelo Git
 ```
 
+### Telas (menu)
+
+O app tem 3 telas, alternadas por um menu fixo no topo (sem router, é tudo `x-if` do Alpine dentro do mesmo `index.html`):
+
+- **Novo Pedido:** fluxo principal — telefone, endereço, produto, quantidade, pagamento, total ao vivo, confirmar/imprimir.
+- **Produtos:** CRUD de produtos — cadastrar/editar nome, marca e os 3 preços (dinheiro/pix/cartão); "excluir" é sempre inativar (soft delete), nunca apagar de vez, pra não quebrar recibos/pedidos antigos que já usaram aquele produto. Produto inativo some do dropdown de Novo Pedido mas continua na lista de Produtos (esmaecido, com botão "Ativar").
+- **Pedidos do Dia:** tabela somente leitura dos pedidos do dia (hora, telefone, itens, pagamento, total), mais recente primeiro, com botão "Mostrar mais" (carrega 15 por vez) — pensado pra dar conta de 50+ pedidos/dia em dias de pico.
+
 ### Fluxo de Dados
 
 1. **Entrada:** O proprietário digita telefone, endereço (se novo), seleciona produto/quantidade e método de pagamento.
-2. **Processamento:** A aplicação calcula total e troco, cria pedido no IndexedDB com timestamp.
+2. **Processamento:** A aplicação calcula total e troco usando o preço do produto correspondente à forma de pagamento escolhida, cria pedido no IndexedDB com timestamp.
 3. **Impressão:** ESC/POS recibo é construído e enviado via Web Bluetooth para impressora térmica.
-4. **Armazenamento:** Pedido fica disponível offline; lista diária é consultável a qualquer momento.
+4. **Armazenamento:** Pedido fica disponível offline; lista diária é consultável a qualquer momento na tela Pedidos do Dia.
 5. **Sincronização:** Service worker cache garante que app funciona sem internet após primeiro acesso.
 
 ## Notas de Implementação
@@ -120,3 +128,4 @@ Além disso, em `js/printer.js`:
 - **Sem leitura automática de WhatsApp:** O proprietário digita manualmente o número e pedido.
 - **Offline-first:** Service worker cacheia assets na primeira visita; app continua funcionando sem rede.
 - **Impressora:** Única integração externa é via Bluetooth — não usa SPP (Bluetooth Clássico), apenas BLE GATT.
+- **Preço por forma de pagamento:** cada produto guarda 3 preços fixos (`prices.dinheiro`, `prices.pix`, `prices.cartao`), não uma fórmula de acréscimo — o total do pedido usa o preço da forma de pagamento escolhida.

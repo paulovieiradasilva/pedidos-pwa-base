@@ -10,10 +10,10 @@ export function localDateString(date = new Date()) {
 
 export async function createOrder(input) {
   const products = await listProducts();
-  const priceById = Object.fromEntries(products.map(p => [p.id, p.price]));
+  const productById = Object.fromEntries(products.map(p => [p.id, p]));
 
   const total = input.items.reduce((sum, item) => {
-    const price = priceById[item.productId];
+    const price = productById[item.productId].prices[input.paymentMethod];
     return sum + price * item.qty;
   }, 0);
 
@@ -38,5 +38,7 @@ export async function createOrder(input) {
 
 export async function listOrdersForDay(dateISO) {
   const all = await getAll('orders');
-  return all.filter(o => localDateString(new Date(o.createdAt)) === dateISO);
+  return all
+    .filter(o => localDateString(new Date(o.createdAt)) === dateISO)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }

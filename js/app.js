@@ -1,26 +1,43 @@
 import { findCustomerByPhone, saveCustomer } from './customers.js';
-import { seedProductsIfEmpty, listProducts } from './products.js';
+import { seedProductsIfEmpty, listProducts, listActiveProducts, saveProduct, setProductActive } from './products.js';
 import { createOrder, listOrdersForDay, localDateString } from './orders.js';
 import { buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
 
 document.addEventListener('alpine:init', () => {
   Alpine.data('pedidosApp', () => ({
+    currentView: 'novoPedido',
+
     phone: '',
     address: '',
     newAddress: '',
     products: [],
+    activeProducts: [],
     selectedProductId: '',
     qty: 1,
     paymentMethod: '',
     changeFor: null,
     statusMessage: '',
     todayOrders: [],
+    visibleOrderCount: 15,
     printerCharacteristic: null,
+
+    productForm: { id: null, name: '', brand: '', priceDinheiro: null, pricePix: null, priceCartao: null },
+    productFormError: '',
 
     async init() {
       await seedProductsIfEmpty();
-      this.products = await listProducts();
-      await this.refreshTodayOrders();
+      await this.setView('novoPedido');
+    },
+
+    async setView(view) {
+      this.currentView = view;
+      if (view === 'produtos') {
+        this.products = await listProducts();
+      } else if (view === 'pedidosDoDia') {
+        await this.refreshTodayOrders();
+      } else if (view === 'novoPedido') {
+        this.activeProducts = await listActiveProducts();
+      }
     },
 
     async lookupCustomer() {
@@ -29,8 +46,9 @@ document.addEventListener('alpine:init', () => {
     },
 
     orderTotal() {
-      const selectedProduct = this.products.find(p => p.id === this.selectedProductId);
-      return selectedProduct ? selectedProduct.price * this.qty : 0;
+      const selectedProduct = this.activeProducts.find(p => p.id === this.selectedProductId);
+      if (!selectedProduct || !this.paymentMethod) return 0;
+      return selectedProduct.prices[this.paymentMethod] * this.qty;
     },
 
     resetForm() {
@@ -54,6 +72,12 @@ document.addEventListener('alpine:init', () => {
         return;
       }
 
+      if (!this.activeProducts.some(p => p.id === this.selectedProductId)) {
+        this.statusMessage = 'Produto selecionado não está mais disponível. Selecione novamente.';
+        this.selectedProductId = '';
+        return;
+      }
+
       if (!Number.isInteger(this.qty) || this.qty <= 0) {
         this.statusMessage = 'Informe uma quantidade válida antes de confirmar.';
         return;
@@ -65,8 +89,8 @@ document.addEventListener('alpine:init', () => {
       }
 
       if (this.paymentMethod === 'dinheiro' && this.changeFor != null) {
-        const selectedProduct = this.products.find(p => p.id === this.selectedProductId);
-        const prospectiveTotal = selectedProduct ? selectedProduct.price * this.qty : 0;
+        const selectedProduct = this.activeProducts.find(p => p.id === this.selectedProductId);
+        const prospectiveTotal = selectedProduct ? selectedProduct.prices[this.paymentMethod] * this.qty : 0;
         if (this.changeFor < prospectiveTotal) {
           this.statusMessage = 'Troco para valor menor que o total do pedido. Verifique o valor informado.';
           return;
@@ -104,12 +128,70 @@ document.addEventListener('alpine:init', () => {
       }
 
       this.resetForm();
+      this.activeProducts = await listActiveProducts();
       await this.refreshTodayOrders();
     },
 
     async refreshTodayOrders() {
       const today = localDateString(new Date());
       this.todayOrders = await listOrdersForDay(today);
+      this.visibleOrderCount = 15;
+    },
+
+    visibleOrders() {
+      return this.todayOrders.slice(0, this.visibleOrderCount);
+    },
+
+    showMoreOrders() {
+      this.visibleOrderCount += 15;
+    },
+
+    startCreateProduct() {
+      this.productForm = { id: null, name: '', brand: '', priceDinheiro: null, pricePix: null, priceCartao: null };
+      this.productFormError = '';
+    },
+
+    startEditProduct(product) {
+      this.productForm = {
+        id: product.id,
+        name: product.name,
+        brand: product.brand,
+        priceDinheiro: product.prices.dinheiro,
+        pricePix: product.prices.pix,
+        priceCartao: product.prices.cartao
+      };
+      this.productFormError = '';
+    },
+
+    async saveProductForm() {
+      if (!this.productForm.name || !this.productForm.brand) {
+        this.productFormError = 'Preencha nome e marca.';
+        return;
+      }
+
+      const prices = {
+        dinheiro: this.productForm.priceDinheiro,
+        pix: this.productForm.pricePix,
+        cartao: this.productForm.priceCartao
+      };
+      if (Object.values(prices).some(v => typeof v !== 'number' || !(v > 0))) {
+        this.productFormError = 'Informe os 3 preços (maior que zero).';
+        return;
+      }
+
+      await saveProduct({
+        id: this.productForm.id ?? undefined,
+        name: this.productForm.name,
+        brand: this.productForm.brand,
+        prices
+      });
+      this.products = await listProducts();
+      this.startCreateProduct();
+    },
+
+    async toggleProductActive(product) {
+      await setProductActive(product.id, !product.active);
+      this.products = await listProducts();
     }
   }));
 });

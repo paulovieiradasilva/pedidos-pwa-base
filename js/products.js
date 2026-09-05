@@ -1,11 +1,11 @@
-import { getAll, put } from './db.js';
+import { getAll, get, put } from './db.js';
 
 const DEFAULT_CATALOG = [
-  { id: 'agua-6.5-a', name: 'Água 20L', brand: 'Marca A', price: 6.5, category: 'agua' },
-  { id: 'agua-6.5-b', name: 'Água 20L', brand: 'Marca B', price: 6.5, category: 'agua' },
-  { id: 'agua-10-a', name: 'Água 20L', brand: 'Marca C', price: 10, category: 'agua' },
-  { id: 'agua-10-b', name: 'Água 20L', brand: 'Marca D', price: 10, category: 'agua' },
-  { id: 'gas-p13', name: 'Gás P13', brand: 'Marca A', price: 110, category: 'gas' }
+  { id: 'agua-6.5-a', name: 'Água 20L', brand: 'Marca A', prices: { dinheiro: 6.5, pix: 6.5, cartao: 6.5 }, active: true },
+  { id: 'agua-6.5-b', name: 'Água 20L', brand: 'Marca B', prices: { dinheiro: 6.5, pix: 6.5, cartao: 6.5 }, active: true },
+  { id: 'agua-10-a', name: 'Água 20L', brand: 'Marca C', prices: { dinheiro: 10, pix: 10, cartao: 10 }, active: true },
+  { id: 'agua-10-b', name: 'Água 20L', brand: 'Marca D', prices: { dinheiro: 10, pix: 10, cartao: 10 }, active: true },
+  { id: 'gas-p13', name: 'Gás P13', brand: 'Marca A', prices: { dinheiro: 110, pix: 110, cartao: 110 }, active: true }
 ];
 
 export async function seedProductsIfEmpty() {
@@ -20,6 +20,26 @@ export async function listProducts() {
   return getAll('products');
 }
 
-export async function addProduct(product) {
+export async function listActiveProducts() {
+  const all = await getAll('products');
+  return all.filter(p => p.active);
+}
+
+export async function saveProduct(product) {
+  const record = {
+    id: product.id ?? crypto.randomUUID(),
+    name: product.name,
+    brand: product.brand,
+    prices: { ...product.prices },
+    active: product.active ?? true
+  };
+  await put('products', record);
+  return record;
+}
+
+export async function setProductActive(id, active) {
+  const product = await get('products', id);
+  if (!product) return;
+  product.active = active;
   await put('products', product);
 }
