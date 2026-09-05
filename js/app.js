@@ -5,7 +5,7 @@ import { buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
 
 document.addEventListener('alpine:init', () => {
   Alpine.data('pedidosApp', () => ({
-    currentView: 'novoPedido',
+    currentView: 'pedidosDoDia',
 
     phone: '',
     address: '',
@@ -19,9 +19,11 @@ document.addEventListener('alpine:init', () => {
     weightGrams: null,
     weightManualTotal: null,
     weightTotalTouched: false,
+    cartItems: [],
     paymentMethod: '',
     changeFor: null,
     statusMessage: '',
+    showOrderForm: false,
     todayOrders: [],
     visibleOrderCount: 15,
     selectedDate: localDateString(new Date()),
@@ -45,7 +47,7 @@ document.addEventListener('alpine:init', () => {
 
     async init() {
       await seedProductsIfEmpty();
-      await this.setView('novoPedido');
+      await this.setView('pedidosDoDia');
     },
 
     async setView(view) {
@@ -54,13 +56,11 @@ document.addEventListener('alpine:init', () => {
         this.products = await listProducts();
       } else if (view === 'pedidosDoDia') {
         this.products = await listProducts();
+        this.activeProducts = await listActiveProducts();
+        this.customers = await listCustomers();
         this.selectedOrderIds = [];
         this.batchPrintMessage = '';
         await this.refreshOrders();
-      } else if (view === 'novoPedido') {
-        this.products = await listProducts();
-        this.activeProducts = await listActiveProducts();
-        this.customers = await listCustomers();
       }
     },
 
@@ -119,15 +119,59 @@ document.addEventListener('alpine:init', () => {
       this.weightTotalTouched = true;
     },
 
-    orderTotal() {
-      const selectedProduct = this.selectedNewOrderProduct();
-      if (!selectedProduct || !this.paymentMethod) return 0;
-      if (selectedProduct.soldByWeight) {
-        if (this.weightTotalTouched) return this.weightManualTotal ?? 0;
-        if (!this.weightGrams) return 0;
-        return selectedProduct.pricePerKg * (this.weightGrams / 1000);
+    validateCurrentItem() {
+      if (!this.selectedProductId) {
+        return 'Selecione um produto antes de adicionar.';
       }
-      return selectedProduct.prices[this.paymentMethod] * this.qty;
+      const selectedProduct = this.selectedNewOrderProduct();
+      if (!selectedProduct) {
+        return 'Produto selecionado não está mais disponível. Selecione novamente.';
+      }
+      if (selectedProduct.soldByWeight) {
+        if (!this.weightGrams || this.weightGrams <= 0) {
+          return 'Informe a quantidade em gramas antes de adicionar.';
+        }
+      } else if (!Number.isInteger(this.qty) || this.qty <= 0) {
+        return 'Informe uma quantidade válida antes de adicionar.';
+      }
+      return null;
+    },
+
+    addCartItem() {
+      const error = this.validateCurrentItem();
+      if (error) {
+        this.statusMessage = error;
+        return;
+      }
+
+      const selectedProduct = this.selectedNewOrderProduct();
+      const item = selectedProduct.soldByWeight
+        ? { productId: this.selectedProductId, productName: this.productDisplayName(selectedProduct), grams: this.weightGrams, manualTotal: this.weightManualTotal }
+        : { productId: this.selectedProductId, productName: this.productDisplayName(selectedProduct), qty: this.qty };
+
+      this.cartItems.push(item);
+      this.selectedProductId = '';
+      this.qty = 1;
+      this.weightGrams = null;
+      this.weightManualTotal = null;
+      this.weightTotalTouched = false;
+      this.statusMessage = '';
+    },
+
+    removeCartItem(index) {
+      this.cartItems.splice(index, 1);
+    },
+
+    cartItemLineTotal(item) {
+      if (item.grams != null) return item.manualTotal ?? 0;
+      const product = this.activeProducts.find(p => p.id === item.productId);
+      if (!product || !this.paymentMethod) return 0;
+      return product.prices[this.paymentMethod] * item.qty;
+    },
+
+    orderTotal() {
+      if (!this.paymentMethod) return 0;
+      return this.cartItems.reduce((sum, item) => sum + this.cartItemLineTotal(item), 0);
     },
 
     resetForm() {
@@ -138,43 +182,43 @@ document.addEventListener('alpine:init', () => {
       this.weightGrams = null;
       this.weightManualTotal = null;
       this.weightTotalTouched = false;
+      this.cartItems = [];
       this.paymentMethod = '';
       this.changeFor = null;
       this.selectedProductId = '';
       this.phoneSuggestions = [];
     },
 
-    async confirmOrder() {
+    openNewOrderForm() {
+      this.resetForm();
+      this.showOrderForm = true;
+    },
+
+    closeOrderForm() {
+      this.resetForm();
+      this.showOrderForm = false;
+    },
+
+    async saveOrder() {
       const phoneDigits = this.phoneDigits();
       if (phoneDigits.length !== 10 && phoneDigits.length !== 11) {
         this.statusMessage = 'Informe um telefone válido com DDD.';
         return;
       }
 
-      if (!this.selectedProductId) {
-        this.statusMessage = 'Selecione um produto antes de confirmar.';
+      if (this.cartItems.length === 0) {
+        this.statusMessage = 'Adicione ao menos um item antes de gravar.';
         return;
       }
 
-      const selectedProduct = this.activeProducts.find(p => p.id === this.selectedProductId);
-      if (!selectedProduct) {
-        this.statusMessage = 'Produto selecionado não está mais disponível. Selecione novamente.';
-        this.selectedProductId = '';
-        return;
-      }
-
-      if (selectedProduct.soldByWeight) {
-        if (!this.weightGrams || this.weightGrams <= 0) {
-          this.statusMessage = 'Informe a quantidade em gramas antes de confirmar.';
-          return;
-        }
-      } else if (!Number.isInteger(this.qty) || this.qty <= 0) {
-        this.statusMessage = 'Informe uma quantidade válida antes de confirmar.';
+      const missingProduct = this.cartItems.find(item => !this.activeProducts.some(p => p.id === item.productId));
+      if (missingProduct) {
+        this.statusMessage = `Produto "${missingProduct.productName}" não está mais disponível. Remova esse item e tente novamente.`;
         return;
       }
 
       if (!this.paymentMethod) {
-        this.statusMessage = 'Selecione a forma de pagamento antes de confirmar.';
+        this.statusMessage = 'Selecione a forma de pagamento antes de gravar.';
         return;
       }
 
@@ -191,41 +235,20 @@ document.addEventListener('alpine:init', () => {
         this.address = this.newAddress;
       }
       if (!this.address) {
-        this.statusMessage = 'Informe o endereço antes de confirmar.';
+        this.statusMessage = 'Informe o endereço antes de gravar.';
         return;
       }
 
-      const item = selectedProduct.soldByWeight
-        ? { productId: this.selectedProductId, grams: this.weightGrams, manualTotal: this.weightManualTotal }
-        : { productId: this.selectedProductId, qty: this.qty };
-
-      const order = await createOrder({
+      await createOrder({
         customerPhone: phoneDigits,
         address: this.address,
-        items: [item],
+        items: this.cartItems.map(({ productName, ...item }) => item),
         paymentMethod: this.paymentMethod,
         changeFor: this.paymentMethod === 'dinheiro' ? this.changeFor : undefined
       });
 
-      const customer = { phone: phoneDigits, address: this.address };
-      let bytes = null;
-
-      try {
-        bytes = buildReceiptBytes(order, customer, this.products);
-        if (!this.printerCharacteristic) {
-          this.printerCharacteristic = await connectPrinter();
-        }
-        await printReceipt(this.printerCharacteristic, bytes);
-        await updateOrderStatus(order.id, 'impresso');
-        this.statusMessage = 'Pedido salvo e enviado para impressão.';
-      } catch (err) {
-        this.printerCharacteristic = null;
-        this.statusMessage = 'Pedido salvo, mas falha ao imprimir: ' + err.message + '.'
-          + (bytes ? ' Copie manualmente: ' + new TextDecoder('windows-1252').decode(bytes) : '');
-      }
-
-      this.resetForm();
-      this.activeProducts = await listActiveProducts();
+      this.statusMessage = 'Pedido gravado.';
+      this.closeOrderForm();
       if (this.selectedDate === localDateString(new Date())) {
         await this.refreshOrders();
       }

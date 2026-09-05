@@ -86,4 +86,27 @@ describe('buildReceiptBytes', () => {
 
     expect(text).toContain('Ração X 1,2kg');
   });
+
+  it('prints one line per item when the order has multiple different products', () => {
+    const order = {
+      items: [
+        { productId: 'agua-10', qty: 2 },
+        { productId: 'racao-10', grams: 1500 }
+      ],
+      paymentMethod: 'dinheiro',
+      total: 35,
+      changeAmount: 0
+    };
+    const customer = { phone: '11988887777', address: 'Rua Teste, 1' };
+    const products = [
+      { id: 'agua-10', name: 'Água 20L', brand: 'Marca C', prices: { dinheiro: 10, pix: 10, cartao: 10 }, active: true },
+      { id: 'racao-10', name: 'Ração X', brand: '', soldByWeight: true, pricePerKg: 10, active: true }
+    ];
+
+    const bytes = buildReceiptBytes(order, customer, products);
+    const text = new TextDecoder('windows-1252').decode(bytes);
+
+    expect(text).toContain('Água 20L Marca C x2');
+    expect(text).toContain('Ração X 1,5kg');
+  });
 });

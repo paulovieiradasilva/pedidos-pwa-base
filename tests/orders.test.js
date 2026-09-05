@@ -145,4 +145,16 @@ describe('orders', () => {
     });
     expect(order.total).toBe(12);
   });
+
+  it('sums the total across multiple different items in the same order', async () => {
+    const order = await createOrder({
+      customerPhone: '11988887777',
+      items: [
+        { productId: 'agua-10', qty: 2 },
+        { productId: 'racao-10', grams: 1500 }
+      ],
+      paymentMethod: 'dinheiro'
+    });
+    expect(order.total).toBe(35);
+  });
 });
