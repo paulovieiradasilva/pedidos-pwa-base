@@ -358,8 +358,12 @@ document.addEventListener('alpine:init', () => {
     },
 
     async cancelOrder(order) {
-      if (!confirm('Cancelar este pedido?')) return;
       await updateOrderStatus(order.id, 'cancelado');
+      await this.refreshOrders();
+    },
+
+    async revertOrderToPending(order) {
+      await updateOrderStatus(order.id, 'pendente');
       await this.refreshOrders();
     },
 
@@ -371,16 +375,14 @@ document.addEventListener('alpine:init', () => {
       return [product.brand, product.active ? null : 'inativo'].filter(Boolean).join(' · ');
     },
 
-    orderSummary(order) {
-      return order.items
-        .map(item => {
-          const product = this.products.find(p => p.id === item.productId);
-          const quantityLabel = item.grams != null
-            ? `${parseFloat((item.grams / 1000).toFixed(3))}kg`
-            : `${item.qty}x`;
-          return product ? `${quantityLabel} ${this.productDisplayName(product)}` : `${quantityLabel} Produto removido`;
-        })
-        .join(', ');
+    orderItemLabels(order) {
+      return order.items.map(item => {
+        const product = this.products.find(p => p.id === item.productId);
+        const quantityLabel = item.grams != null
+          ? `${parseFloat((item.grams / 1000).toFixed(3))}kg`
+          : `${item.qty}x`;
+        return product ? `${quantityLabel} ${this.productDisplayName(product)}` : `${quantityLabel} Produto removido`;
+      });
     },
 
     paymentMethodLabel(method) {

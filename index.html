@@ -588,42 +588,33 @@
                   x-text="o.address"
                 ></p>
               </template>
-              <div class="flex justify-between items-baseline mt-1">
-                <span
-                  class="text-xs text-gray-600"
-                  x-text="orderSummary(o)"
-                ></span>
+              <ul class="mt-1 flex flex-col gap-0.5">
+                <template x-for="label in orderItemLabels(o)" :key="label">
+                  <li class="text-xs text-gray-600" x-text="label"></li>
+                </template>
+              </ul>
+              <div class="flex justify-between items-center mt-1.5 pt-1.5 border-t border-gray-100">
                 <span
                   class="text-xs font-medium"
                   :class="paymentMethodTextClass(o.paymentMethod)"
                   :title="paymentMethodLabel(o.paymentMethod)"
                   x-text="paymentMethodIcon(o.paymentMethod)"
                 ></span>
-              </div>
-              <template x-if="orderStatusTab === 'pendente' || orderStatusTab === 'impresso'">
-                <div class="flex gap-2 mt-2">
-                  <button
-                    class="flex-1 p-1 border border-gray-300 text-gray-700 bg-white rounded-lg text-xs"
-                    @click="startEditOrder(o)"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    class="flex-1 p-1 border border-red-200 text-red-600 bg-white rounded-lg text-xs"
-                    @click="cancelOrder(o)"
-                  >
-                    Cancelar
-                  </button>
+                <div class="flex gap-3 text-xs font-medium">
+                  <template x-if="orderStatusTab === 'pendente' || orderStatusTab === 'impresso'">
+                    <span class="text-blue-600 cursor-pointer" @click="startEditOrder(o)">Editar</span>
+                  </template>
+                  <template x-if="orderStatusTab === 'impresso'">
+                    <span class="text-blue-600 cursor-pointer" @click="markOrderDelivered(o)">Marcar entregue</span>
+                  </template>
+                  <template x-if="orderStatusTab === 'pendente' || orderStatusTab === 'impresso'">
+                    <span class="text-red-600 cursor-pointer" @click="cancelOrder(o)">Cancelar</span>
+                  </template>
+                  <template x-if="orderStatusTab === 'cancelado'">
+                    <span class="text-blue-600 cursor-pointer" @click="revertOrderToPending(o)">Reverter pra pendente</span>
+                  </template>
                 </div>
-              </template>
-              <template x-if="orderStatusTab === 'impresso'">
-                <button
-                  class="w-full mt-2 p-1 border border-gray-300 text-gray-700 bg-white rounded-lg text-xs"
-                  @click="markOrderDelivered(o)"
-                >
-                  Marcar entregue
-                </button>
-              </template>
+              </div>
             </div>
           </template>
         </div>
