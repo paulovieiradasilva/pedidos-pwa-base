@@ -180,7 +180,7 @@ document.addEventListener('alpine:init', () => {
     },
 
     paymentMethodIcon(method) {
-      return { dinheiro: '💵', pix: '⚡', cartao: '💳' }[method] ?? '?';
+      return { dinheiro: '💵', pix: 'Pix', cartao: '💳' }[method] ?? '?';
     },
 
     paymentMethodAccentClass(method) {
