@@ -20,6 +20,7 @@ document.addEventListener('alpine:init', () => {
     todayOrders: [],
     visibleOrderCount: 15,
     selectedDate: localDateString(new Date()),
+    paymentFilter: { dinheiro: true, pix: true, cartao: true },
     printerCharacteristic: null,
 
     productForm: { id: null, name: '', brand: '', priceDinheiro: null, pricePix: null, priceCartao: null },
@@ -142,8 +143,20 @@ document.addEventListener('alpine:init', () => {
       this.visibleOrderCount = 15;
     },
 
+    filteredOrders() {
+      return this.todayOrders.filter(o => this.paymentFilter[o.paymentMethod]);
+    },
+
+    filteredTotal() {
+      return this.filteredOrders().reduce((sum, o) => sum + o.total, 0);
+    },
+
     visibleOrders() {
-      return this.todayOrders.slice(0, this.visibleOrderCount);
+      return this.filteredOrders().slice(0, this.visibleOrderCount);
+    },
+
+    onFilterChange() {
+      this.visibleOrderCount = 15;
     },
 
     showMoreOrders() {
