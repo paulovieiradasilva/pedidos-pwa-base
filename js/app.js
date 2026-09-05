@@ -11,7 +11,7 @@ document.addEventListener('alpine:init', () => {
     products: [],
     selectedProductId: '',
     qty: 1,
-    paymentMethod: 'dinheiro',
+    paymentMethod: '',
     changeFor: null,
     statusMessage: '',
     todayOrders: [],
@@ -20,7 +20,6 @@ document.addEventListener('alpine:init', () => {
     async init() {
       await seedProductsIfEmpty();
       this.products = await listProducts();
-      if (this.products.length > 0) this.selectedProductId = this.products[0].id;
       await this.refreshTodayOrders();
     },
 
@@ -39,9 +38,9 @@ document.addEventListener('alpine:init', () => {
       this.address = '';
       this.newAddress = '';
       this.qty = 1;
-      this.paymentMethod = 'dinheiro';
+      this.paymentMethod = '';
       this.changeFor = null;
-      this.selectedProductId = this.products.length > 0 ? this.products[0].id : '';
+      this.selectedProductId = '';
     },
 
     async confirmOrder() {
@@ -50,8 +49,18 @@ document.addEventListener('alpine:init', () => {
         return;
       }
 
+      if (!this.selectedProductId) {
+        this.statusMessage = 'Selecione um produto antes de confirmar.';
+        return;
+      }
+
       if (!Number.isInteger(this.qty) || this.qty <= 0) {
         this.statusMessage = 'Informe uma quantidade válida antes de confirmar.';
+        return;
+      }
+
+      if (!this.paymentMethod) {
+        this.statusMessage = 'Selecione a forma de pagamento antes de confirmar.';
         return;
       }
 

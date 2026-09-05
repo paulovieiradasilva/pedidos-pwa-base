@@ -38,6 +38,7 @@
 
     <label class="block mb-2">Produto</label>
     <select class="border p-2 w-full mb-3" x-model="selectedProductId">
+      <option value="" disabled>Selecione um produto</option>
       <template x-for="p in products" :key="p.id">
         <option
           :value="p.id"
@@ -56,6 +57,7 @@
 
     <label class="block mb-2">Pagamento</label>
     <select class="border p-2 w-full mb-3" x-model="paymentMethod">
+      <option value="" disabled>Selecione a forma de pagamento</option>
       <option value="dinheiro">Dinheiro</option>
       <option value="pix">Pix</option>
       <option value="cartao">Cartão</option>
