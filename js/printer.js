@@ -26,7 +26,8 @@ export function buildReceiptBytes(order, customer, products) {
   lines.push('');
   for (const item of order.items) {
     const product = priceById[item.productId];
-    lines.push(`${product.name} ${product.brand} x${item.qty}`);
+    const label = product.brand ? `${product.name} ${product.brand}` : product.name;
+    lines.push(`${label} x${item.qty}`);
   }
   lines.push('');
   lines.push(`Total: R$ ${order.total.toFixed(2)}`);

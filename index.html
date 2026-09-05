@@ -34,7 +34,7 @@
         :class="currentView === 'pedidosDoDia' ? 'bg-blue-600 text-white' : 'bg-gray-200'"
         @click="setView('pedidosDoDia')"
       >
-        Pedidos
+        Pedidos hoje
       </button>
     </nav>
 
@@ -66,7 +66,7 @@
         <select class="border p-2 w-full mb-3" x-model="selectedProductId">
           <option value="" disabled>Selecione um produto</option>
           <template x-for="p in activeProducts" :key="p.id">
-            <option :value="p.id" x-text="p.name + ' ' + p.brand"></option>
+            <option :value="p.id" x-text="productDisplayName(p)"></option>
           </template>
         </select>
 
@@ -133,25 +133,58 @@
             ></h2>
 
             <label class="block mb-1 text-sm">Nome</label>
-            <input type="text" class="border p-2 w-full mb-2" x-model="productForm.name" />
+            <input
+              type="text"
+              class="border p-2 w-full mb-2"
+              x-model="productForm.name"
+            />
 
-            <label class="block mb-1 text-sm">Marca</label>
-            <input type="text" class="border p-2 w-full mb-2" x-model="productForm.brand" />
+            <label class="block mb-1 text-sm">Marca (opcional)</label>
+            <input
+              type="text"
+              class="border p-2 w-full mb-2"
+              x-model="productForm.brand"
+            />
 
             <label class="block mb-1 text-sm">Preço Dinheiro</label>
-            <input type="number" step="0.01" class="border p-2 w-full mb-2" x-model.number="productForm.priceDinheiro" />
+            <input
+              type="number"
+              step="0.01"
+              class="border p-2 w-full mb-2"
+              x-model.number="productForm.priceDinheiro"
+            />
 
             <label class="block mb-1 text-sm">Preço Pix</label>
-            <input type="number" step="0.01" class="border p-2 w-full mb-2" x-model.number="productForm.pricePix" />
+            <input
+              type="number"
+              step="0.01"
+              class="border p-2 w-full mb-2"
+              x-model.number="productForm.pricePix"
+            />
 
             <label class="block mb-1 text-sm">Preço Cartão</label>
-            <input type="number" step="0.01" class="border p-2 w-full mb-2" x-model.number="productForm.priceCartao" />
+            <input
+              type="number"
+              step="0.01"
+              class="border p-2 w-full mb-2"
+              x-model.number="productForm.priceCartao"
+            />
 
             <p class="text-sm text-red-600 mb-2" x-text="productFormError"></p>
 
             <div class="flex gap-2">
-              <button class="bg-blue-600 text-white p-2 flex-1 rounded" @click="saveProductForm()">Salvar</button>
-              <button class="bg-gray-200 p-2 flex-1 rounded" @click="closeProductForm()">Cancelar</button>
+              <button
+                class="bg-blue-600 text-white p-2 flex-1 rounded"
+                @click="saveProductForm()"
+              >
+                Salvar
+              </button>
+              <button
+                class="bg-gray-200 p-2 flex-1 rounded"
+                @click="closeProductForm()"
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </template>
@@ -184,11 +217,16 @@
 
         <div class="flex flex-col gap-2">
           <template x-for="p in filteredProductList()" :key="p.id">
-            <div class="bg-white border rounded-lg p-3" :class="!p.active && 'opacity-50'">
+            <div
+              class="bg-white border rounded-lg p-3"
+              :class="!p.active && 'opacity-50'"
+            >
               <div class="flex justify-between items-start gap-2">
                 <div>
                   <p class="text-sm font-medium" x-text="p.name"></p>
-                  <p class="text-xs text-gray-600" x-text="p.brand + (p.active ? '' : ' · inativo')"></p>
+                  <template x-if="productSubtitle(p)">
+                    <p class="text-xs text-gray-600" x-text="productSubtitle(p)"></p>
+                  </template>
                 </div>
                 <div class="flex gap-1 shrink-0">
                   <button
@@ -208,9 +246,24 @@
                 </div>
               </div>
               <div class="flex gap-1 mt-2 flex-wrap">
-                <span class="text-xs px-2 py-1 rounded-full" :class="paymentMethodPillClass('dinheiro')" title="Dinheiro" x-text="paymentMethodIcon('dinheiro') + ' R$ ' + p.prices.dinheiro.toFixed(2)"></span>
-                <span class="text-xs px-2 py-1 rounded-full" :class="paymentMethodPillClass('pix')" title="Pix" x-text="paymentMethodIcon('pix') + ' R$ ' + p.prices.pix.toFixed(2)"></span>
-                <span class="text-xs px-2 py-1 rounded-full" :class="paymentMethodPillClass('cartao')" title="Cartão" x-text="paymentMethodIcon('cartao') + ' R$ ' + p.prices.cartao.toFixed(2)"></span>
+                <span
+                  class="text-xs px-2 py-1 rounded-full"
+                  :class="paymentMethodPillClass('dinheiro')"
+                  title="Dinheiro"
+                  x-text="paymentMethodIcon('dinheiro') + ' R$ ' + p.prices.dinheiro.toFixed(2)"
+                ></span>
+                <span
+                  class="text-xs px-2 py-1 rounded-full"
+                  :class="paymentMethodPillClass('pix')"
+                  title="Pix"
+                  x-text="paymentMethodIcon('pix') + ' R$ ' + p.prices.pix.toFixed(2)"
+                ></span>
+                <span
+                  class="text-xs px-2 py-1 rounded-full"
+                  :class="paymentMethodPillClass('cartao')"
+                  title="Cartão"
+                  x-text="paymentMethodIcon('cartao') + ' R$ ' + p.prices.cartao.toFixed(2)"
+                ></span>
               </div>
             </div>
           </template>
@@ -222,7 +275,10 @@
       <div>
         <div class="flex justify-between items-baseline mb-4">
           <h1 class="text-xl font-bold">Pedidos</h1>
-          <span class="text-lg font-bold" x-text="'R$ ' + filteredTotal().toFixed(2)"></span>
+          <span
+            class="text-lg font-bold"
+            x-text="'R$ ' + filteredTotal().toFixed(2)"
+          ></span>
         </div>
 
         <div class="flex items-center gap-2 mb-3">
@@ -232,20 +288,35 @@
             x-model="selectedDate"
             @change="refreshOrders()"
           />
-          <span class="text-sm text-gray-600 whitespace-nowrap" x-text="filteredOrders().length + ' pedido(s)'"></span>
+          <span
+            class="text-sm text-gray-600 whitespace-nowrap"
+            x-text="filteredOrders().length + ' pedido(s)'"
+          ></span>
         </div>
 
         <div class="flex gap-3 mb-3 text-sm">
           <label class="flex items-center gap-1" title="Dinheiro">
-            <input type="checkbox" x-model="paymentFilter.dinheiro" @change="onFilterChange()" />
+            <input
+              type="checkbox"
+              x-model="paymentFilter.dinheiro"
+              @change="onFilterChange()"
+            />
             <span aria-hidden="true">💵</span>
           </label>
           <label class="flex items-center gap-1" title="Pix">
-            <input type="checkbox" x-model="paymentFilter.pix" @change="onFilterChange()" />
+            <input
+              type="checkbox"
+              x-model="paymentFilter.pix"
+              @change="onFilterChange()"
+            />
             <span class="font-medium text-blue-700">Pix</span>
           </label>
           <label class="flex items-center gap-1" title="Cartão">
-            <input type="checkbox" x-model="paymentFilter.cartao" @change="onFilterChange()" />
+            <input
+              type="checkbox"
+              x-model="paymentFilter.cartao"
+              @change="onFilterChange()"
+            />
             <span aria-hidden="true">💳</span>
           </label>
         </div>
@@ -253,23 +324,47 @@
         <template x-if="todayOrders.length === 0">
           <p class="text-sm text-gray-600">Nenhum pedido nesse dia.</p>
         </template>
-        <template x-if="todayOrders.length > 0 && filteredOrders().length === 0">
-          <p class="text-sm text-gray-600">Nenhum pedido com essa forma de pagamento.</p>
+        <template
+          x-if="todayOrders.length > 0 && filteredOrders().length === 0"
+        >
+          <p class="text-sm text-gray-600">
+            Nenhum pedido com essa forma de pagamento.
+          </p>
         </template>
 
         <div class="flex flex-col gap-2">
           <template x-for="o in visibleOrders()" :key="o.id">
-            <div class="bg-white border rounded-lg p-2 border-l-4" :class="paymentMethodAccentClass(o.paymentMethod)">
+            <div
+              class="bg-white border rounded-lg p-2 border-l-4"
+              :class="paymentMethodAccentClass(o.paymentMethod)"
+            >
               <div class="flex justify-between items-baseline">
-                <span class="text-sm font-medium" x-text="new Date(o.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' · ' + o.customerPhone"></span>
-                <span class="text-base font-bold" x-text="'R$ ' + o.total.toFixed(2)"></span>
+                <span
+                  class="text-sm font-medium"
+                  x-text="new Date(o.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' · ' + o.customerPhone"
+                ></span>
+                <span
+                  class="text-base font-bold"
+                  x-text="'R$ ' + o.total.toFixed(2)"
+                ></span>
               </div>
               <template x-if="o.address">
-                <p class="text-xs text-gray-600 truncate" x-text="o.address"></p>
+                <p
+                  class="text-xs text-gray-600 truncate"
+                  x-text="o.address"
+                ></p>
               </template>
               <div class="flex justify-between items-baseline mt-1">
-                <span class="text-xs text-gray-600" x-text="orderSummary(o)"></span>
-                <span class="text-xs font-medium" :class="paymentMethodTextClass(o.paymentMethod)" :title="paymentMethodLabel(o.paymentMethod)" x-text="paymentMethodIcon(o.paymentMethod)"></span>
+                <span
+                  class="text-xs text-gray-600"
+                  x-text="orderSummary(o)"
+                ></span>
+                <span
+                  class="text-xs font-medium"
+                  :class="paymentMethodTextClass(o.paymentMethod)"
+                  :title="paymentMethodLabel(o.paymentMethod)"
+                  x-text="paymentMethodIcon(o.paymentMethod)"
+                ></span>
               </div>
             </div>
           </template>

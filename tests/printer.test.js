@@ -53,4 +53,21 @@ describe('buildReceiptBytes', () => {
 
     expect(text).toContain('Água 20L Marca C x1');
   });
+
+  it('prints just the product name, with no trailing space, when brand is empty', () => {
+    const order = {
+      items: [{ productId: 'gas-p13', qty: 1 }],
+      paymentMethod: 'pix',
+      total: 110,
+      changeAmount: 0
+    };
+    const customer = { phone: '11988887777', address: 'Rua Teste, 1' };
+    const products = [{ id: 'gas-p13', name: 'Gás P13', brand: '', prices: { dinheiro: 110, pix: 110, cartao: 110 }, active: true }];
+
+    const bytes = buildReceiptBytes(order, customer, products);
+    const text = new TextDecoder('windows-1252').decode(bytes);
+
+    expect(text).toContain('Gás P13 x1');
+    expect(text).not.toContain('Gás P13  x1');
+  });
 });

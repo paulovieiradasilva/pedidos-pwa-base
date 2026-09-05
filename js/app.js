@@ -166,11 +166,19 @@ document.addEventListener('alpine:init', () => {
       this.visibleOrderCount += 15;
     },
 
+    productDisplayName(product) {
+      return product.brand ? `${product.name} ${product.brand}` : product.name;
+    },
+
+    productSubtitle(product) {
+      return [product.brand, product.active ? null : 'inativo'].filter(Boolean).join(' · ');
+    },
+
     orderSummary(order) {
       return order.items
         .map(item => {
           const product = this.products.find(p => p.id === item.productId);
-          return product ? `${item.qty}x ${product.name} ${product.brand}` : `${item.qty}x Produto removido`;
+          return product ? `${item.qty}x ${this.productDisplayName(product)}` : `${item.qty}x Produto removido`;
         })
         .join(', ');
     },
@@ -228,8 +236,8 @@ document.addEventListener('alpine:init', () => {
     },
 
     async saveProductForm() {
-      if (!this.productForm.name || !this.productForm.brand) {
-        this.productFormError = 'Preencha nome e marca.';
+      if (!this.productForm.name) {
+        this.productFormError = 'Preencha o nome.';
         return;
       }
 
@@ -261,7 +269,7 @@ document.addEventListener('alpine:init', () => {
       const query = this.productSearch.trim().toLowerCase();
       return this.products
         .filter(p => this.productFilter === 'all' || p.active)
-        .filter(p => !query || (p.name + ' ' + p.brand).toLowerCase().includes(query));
+        .filter(p => !query || this.productDisplayName(p).toLowerCase().includes(query));
     },
 
     async toggleProductActive(product) {

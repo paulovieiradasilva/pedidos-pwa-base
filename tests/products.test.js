@@ -34,6 +34,12 @@ describe('products', () => {
     expect(updated.prices.dinheiro).toBe(9);
   });
 
+  it('creates a product without a brand', async () => {
+    const saved = await saveProduct({ name: 'Gás P13', brand: '', prices: { dinheiro: 110, pix: 110, cartao: 110 } });
+    const products = await listProducts();
+    expect(products.find(p => p.id === saved.id).brand).toBe('');
+  });
+
   it('excludes inactive products from listActiveProducts but keeps them in listProducts', async () => {
     const saved = await saveProduct({ name: 'Água 10L', brand: 'Marca Z', prices: { dinheiro: 8, pix: 8, cartao: 9 } });
     await setProductActive(saved.id, false);
