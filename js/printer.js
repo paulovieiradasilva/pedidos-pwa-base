@@ -5,6 +5,17 @@ const SERVICE_UUID = '000018f0-0000-1000-8000-00805f9b34fb';
 const CHARACTERISTIC_UUID = '00002af1-0000-1000-8000-00805f9b34fb';
 
 const ESC_INIT = new Uint8Array([0x1b, 0x40]); // ESC @
+const ESC_CODEPAGE_WPC1252 = new Uint8Array([0x1b, 0x74, 0x10]); // ESC t 16 - select WPC1252 codepage
+
+// Encodes text as single-byte Latin-1/CP1252 bytes (char code & 0xff). Portuguese
+// accented characters (á é í ó ú â ê ô ã õ ç, upper/lowercase) all have code points
+// <= 0xFF and map 1:1 to CP1252, so this is safe for our receipt text without
+// pulling in a full CP1252 encoding table.
+function encodeLatin1(text) {
+  const bytes = new Uint8Array(text.length);
+  for (let i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i) & 0xff;
+  return bytes;
+}
 
 export function buildReceiptBytes(order, customer, products) {
   const priceById = Object.fromEntries(products.map(p => [p.id, p]));
@@ -26,17 +37,19 @@ export function buildReceiptBytes(order, customer, products) {
   lines.push('\n\n');
 
   const text = lines.join('\n');
-  const body = new TextEncoder().encode(text);
+  const body = encodeLatin1(text);
 
-  const result = new Uint8Array(ESC_INIT.length + body.length);
+  const result = new Uint8Array(ESC_INIT.length + ESC_CODEPAGE_WPC1252.length + body.length);
   result.set(ESC_INIT, 0);
-  result.set(body, ESC_INIT.length);
+  result.set(ESC_CODEPAGE_WPC1252, ESC_INIT.length);
+  result.set(body, ESC_INIT.length + ESC_CODEPAGE_WPC1252.length);
   return result;
 }
 
 export async function connectPrinter() {
   const device = await navigator.bluetooth.requestDevice({
-    filters: [{ services: [SERVICE_UUID] }]
+    acceptAllDevices: true,
+    optionalServices: [SERVICE_UUID]
   });
   const server = await device.gatt.connect();
   const service = await server.getPrimaryService(SERVICE_UUID);

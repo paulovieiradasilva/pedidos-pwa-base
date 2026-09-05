@@ -1,6 +1,13 @@
 import { getAll, put } from './db.js';
 import { listProducts } from './products.js';
 
+export function localDateString(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 export async function createOrder(input) {
   const products = await listProducts();
   const priceById = Object.fromEntries(products.map(p => [p.id, p.price]));
@@ -31,5 +38,5 @@ export async function createOrder(input) {
 
 export async function listOrdersForDay(dateISO) {
   const all = await getAll('orders');
-  return all.filter(o => o.createdAt.slice(0, 10) === dateISO);
+  return all.filter(o => localDateString(new Date(o.createdAt)) === dateISO);
 }

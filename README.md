@@ -43,8 +43,24 @@ Após publicar a aplicação em produção (GitHub Pages ou qualquer servidor we
    git push
    ```
 
-3. **Recarregue a aplicação no tablet com internet:**
-   Acesse a URL da aplicação no tablet com conexão de rede ativa. O service worker detectará a nova versão e atualizará o cache automaticamente na próxima recarga. Não é necessário reinstalar a aplicação — basta abrir de novo com internet para buscar a versão mais recente.
+3. **IMPORTANTE — incremente `CACHE_NAME` em `service-worker.js` antes de todo deploy:**
+   O service worker usa cache-first e só percebe arquivos novos quando o nome do cache muda. Antes de fazer commit de qualquer alteração, edite a constante `CACHE_NAME` no topo de `service-worker.js` (por exemplo, de `'pedidos-cache-v1'` para `'pedidos-cache-v2'`). Se você esquecer esse passo, o service worker **não vai buscar os arquivos novos** e o tablet continuará rodando a versão antiga indefinidamente, mesmo com internet.
+
+4. **Recarregue a aplicação no tablet com internet:**
+   Acesse a URL da aplicação no tablet com conexão de rede ativa. Como o novo `CACHE_NAME` força a reinstalação do service worker, ele assume o controle imediatamente (`skipWaiting`/`clients.claim`) e busca os arquivos atualizados. Não é necessário reinstalar a aplicação — basta abrir de novo com internet para buscar a versão mais recente.
+
+## Configurando a impressora
+
+Os valores de `SERVICE_UUID` e `CHARACTERISTIC_UUID` no topo de `js/printer.js` são placeholders genéricos e **precisam ser substituídos** pelos valores reais da impressora térmica usada, obtidos via o spike de hardware:
+
+1. Sirva/abra `spike/bluetooth-test.html` em um contexto seguro (HTTPS ou `localhost` — veja "Visualização Local" acima) no navegador do tablet Android.
+2. Clique em "Conectar impressora" e selecione a impressora física na caixa de pareamento do Chrome.
+3. O log da página listará os serviços e características BLE da impressora. Anote o **service UUID** e o **characteristic UUID** que aparecem com a propriedade `write` ou `writeWithoutResponse` igual a `true` — é essa característica que aceita os bytes ESC/POS.
+4. Cole esses dois valores nas constantes `SERVICE_UUID` e `CHARACTERISTIC_UUID` no topo de `js/printer.js`, substituindo os placeholders.
+
+Além disso, em `js/printer.js`:
+- `CHUNK_SIZE` (atualmente 180 bytes) pode precisar ser reduzido para algo próximo de 20 bytes se a impressora não negociar um MTU de Bluetooth maior — chunks grandes demais para o MTU acordado são silenciosamente truncados ou descartados pela pilha Bluetooth.
+- Se dados forem perdidos ou o recibo sair incompleto/corrompido mesmo com o `CHUNK_SIZE` reduzido, adicione um pequeno delay (`await new Promise(r => setTimeout(r, ...))`) entre o envio de cada chunk em `printReceipt` — algumas impressoras BLE clone não processam a fila de escrita rápido o suficiente.
 
 ## Requisitos do Web Bluetooth
 

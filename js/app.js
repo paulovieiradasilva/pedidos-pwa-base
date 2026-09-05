@@ -1,10 +1,10 @@
 import { findCustomerByPhone, saveCustomer } from './customers.js';
 import { seedProductsIfEmpty, listProducts } from './products.js';
-import { createOrder, listOrdersForDay } from './orders.js';
+import { createOrder, listOrdersForDay, localDateString } from './orders.js';
 import { buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
 
-window.pedidosApp = function () {
-  return {
+document.addEventListener('alpine:init', () => {
+  Alpine.data('pedidosApp', () => ({
     phone: '',
     address: '',
     newAddress: '',
@@ -30,6 +30,25 @@ window.pedidosApp = function () {
     },
 
     async confirmOrder() {
+      if (!this.phone) {
+        this.statusMessage = 'Informe o telefone antes de confirmar.';
+        return;
+      }
+
+      if (!Number.isInteger(this.qty) || this.qty <= 0) {
+        this.statusMessage = 'Informe uma quantidade válida antes de confirmar.';
+        return;
+      }
+
+      if (this.paymentMethod === 'dinheiro' && this.changeFor != null) {
+        const selectedProduct = this.products.find(p => p.id === this.selectedProductId);
+        const prospectiveTotal = selectedProduct ? selectedProduct.price * this.qty : 0;
+        if (this.changeFor < prospectiveTotal) {
+          this.statusMessage = 'Troco para valor menor que o total do pedido. Verifique o valor informado.';
+          return;
+        }
+      }
+
       if (!this.address && this.newAddress) {
         await saveCustomer(this.phone, this.newAddress);
         this.address = this.newAddress;
@@ -56,15 +75,27 @@ window.pedidosApp = function () {
         await printReceipt(this.printerCharacteristic, bytes);
         this.statusMessage = 'Pedido salvo e enviado para impressão.';
       } catch (err) {
-        this.statusMessage = 'Pedido salvo, mas falha ao imprimir: ' + err.message + '. Copie manualmente: ' + new TextDecoder().decode(bytes);
+        this.printerCharacteristic = null;
+        this.statusMessage = 'Pedido salvo, mas falha ao imprimir: ' + err.message + '. Copie manualmente: ' + new TextDecoder('windows-1252').decode(bytes);
       }
 
       await this.refreshTodayOrders();
     },
 
     async refreshTodayOrders() {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = localDateString(new Date());
       this.todayOrders = await listOrdersForDay(today);
     }
-  };
-};
+  }));
+});
+
+// vendor/alpine.min.js is a plain (non-module) self-starting build: it calls
+// Alpine.start() via queueMicrotask as soon as its own script body finishes
+// executing. Its timing relative to a type="module" script is NOT reliably
+// controlled by tag order in the document (confirmed empirically — module
+// scripts and classic <script defer> scripts do not share a guaranteed
+// relative execution order in Chromium). Loading it via dynamic import here,
+// after the 'alpine:init' listener above has already been registered,
+// guarantees Alpine.start() (and the 'alpine:init' event it fires) always
+// runs after our Alpine.data('pedidosApp', ...) registration is in place.
+import('../vendor/alpine.min.js');

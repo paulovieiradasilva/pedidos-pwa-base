@@ -14,11 +14,27 @@ describe('buildReceiptBytes', () => {
     const products = [{ id: 'agua-10', name: 'Água 20L', brand: 'Marca C', price: 10, category: 'agua' }];
 
     const bytes = buildReceiptBytes(order, customer, products);
-    const text = new TextDecoder().decode(bytes);
+    const text = new TextDecoder('windows-1252').decode(bytes);
 
     expect(text).toContain('Rua Joaquim Possidônio, 40');
     expect(text).toContain('Água 20L Marca C x2');
     expect(text).toContain('Total: R$ 20.00');
     expect(text).toContain('Troco para R$ 50.00 (devolver R$ 30.00)');
+  });
+
+  it('round-trips accented Portuguese characters through Latin-1/CP1252 encoding', () => {
+    const order = {
+      items: [{ productId: 'agua-10', qty: 1 }],
+      paymentMethod: 'pix',
+      total: 10,
+      changeAmount: 0
+    };
+    const customer = { phone: '11988887777', address: 'Rua da Água, Endereço com ç e ã' };
+    const products = [{ id: 'agua-10', name: 'Água 20L', brand: 'Marca C', price: 10, category: 'agua' }];
+
+    const bytes = buildReceiptBytes(order, customer, products);
+    const text = new TextDecoder('windows-1252').decode(bytes);
+
+    expect(text).toContain('Rua da Água, Endereço com ç e ã');
   });
 });
