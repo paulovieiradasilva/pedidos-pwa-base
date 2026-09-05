@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createOrder, listOrdersForDay, localDateString } from '../js/orders.js';
+import { createOrder, listOrdersForDay, localDateString, updateOrderStatus } from '../js/orders.js';
 import { saveProduct } from '../js/products.js';
 
 beforeEach(async () => {
   await saveProduct({ id: 'agua-10', name: 'Água 20L', brand: 'Marca C', prices: { dinheiro: 10, pix: 9, cartao: 11 } });
+  await saveProduct({ id: 'racao-10', name: 'Ração X', brand: '', soldByWeight: true, pricePerKg: 10 });
 });
 
 describe('orders', () => {
@@ -104,5 +105,44 @@ describe('orders', () => {
     const firstIndex = list.findIndex(o => o.id === first.id);
     const secondIndex = list.findIndex(o => o.id === second.id);
     expect(secondIndex).toBeLessThan(firstIndex);
+  });
+
+  it('creates orders with pendente status', async () => {
+    const order = await createOrder({
+      customerPhone: '11988887777',
+      items: [{ productId: 'agua-10', qty: 1 }],
+      paymentMethod: 'pix'
+    });
+    expect(order.status).toBe('pendente');
+  });
+
+  it('updates the status of an existing order', async () => {
+    const order = await createOrder({
+      customerPhone: '11988887777',
+      items: [{ productId: 'agua-10', qty: 1 }],
+      paymentMethod: 'pix'
+    });
+    await updateOrderStatus(order.id, 'impresso');
+    const today = localDateString(new Date(order.createdAt));
+    const list = await listOrdersForDay(today);
+    expect(list.find(o => o.id === order.id).status).toBe('impresso');
+  });
+
+  it('computes total for a weight-based item using pricePerKg and grams', async () => {
+    const order = await createOrder({
+      customerPhone: '11988887777',
+      items: [{ productId: 'racao-10', grams: 1500 }],
+      paymentMethod: 'dinheiro'
+    });
+    expect(order.total).toBe(15);
+  });
+
+  it('uses manualTotal instead of the computed weight price when provided', async () => {
+    const order = await createOrder({
+      customerPhone: '11988887777',
+      items: [{ productId: 'racao-10', grams: 1500, manualTotal: 12 }],
+      paymentMethod: 'dinheiro'
+    });
+    expect(order.total).toBe(12);
   });
 });

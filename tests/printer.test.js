@@ -70,4 +70,20 @@ describe('buildReceiptBytes', () => {
     expect(text).toContain('Gás P13 x1');
     expect(text).not.toContain('Gás P13  x1');
   });
+
+  it('prints the weight in kg instead of a unit count for weight-based items', () => {
+    const order = {
+      items: [{ productId: 'racao-10', grams: 1200 }],
+      paymentMethod: 'dinheiro',
+      total: 12,
+      changeAmount: 0
+    };
+    const customer = { phone: '11988887777', address: 'Rua Teste, 1' };
+    const products = [{ id: 'racao-10', name: 'Ração X', brand: '', soldByWeight: true, pricePerKg: 10, active: true }];
+
+    const bytes = buildReceiptBytes(order, customer, products);
+    const text = new TextDecoder('windows-1252').decode(bytes);
+
+    expect(text).toContain('Ração X 1,2kg');
+  });
 });

@@ -26,11 +26,14 @@ export async function listActiveProducts() {
 }
 
 export async function saveProduct(product) {
+  const soldByWeight = product.soldByWeight ?? false;
   const record = {
     id: product.id ?? crypto.randomUUID(),
     name: product.name,
     brand: product.brand,
-    prices: { ...product.prices },
+    soldByWeight,
+    pricePerKg: soldByWeight ? product.pricePerKg : null,
+    prices: soldByWeight ? null : { ...product.prices },
     active: product.active ?? true
   };
   await put('products', record);

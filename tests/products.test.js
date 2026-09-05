@@ -58,4 +58,13 @@ describe('products', () => {
     const active = await listActiveProducts();
     expect(active.some(p => p.id === saved.id)).toBe(true);
   });
+
+  it('creates a product sold by weight with pricePerKg and no fixed prices', async () => {
+    const saved = await saveProduct({ name: 'Ração X', brand: '', soldByWeight: true, pricePerKg: 12.5 });
+    const products = await listProducts();
+    const found = products.find(p => p.id === saved.id);
+    expect(found.soldByWeight).toBe(true);
+    expect(found.pricePerKg).toBe(12.5);
+    expect(found.prices).toBe(null);
+  });
 });

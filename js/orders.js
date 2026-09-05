@@ -1,4 +1,4 @@
-import { getAll, put } from './db.js';
+import { getAll, get, put } from './db.js';
 import { listProducts } from './products.js';
 
 export function localDateString(date = new Date()) {
@@ -13,8 +13,11 @@ export async function createOrder(input) {
   const productById = Object.fromEntries(products.map(p => [p.id, p]));
 
   const total = input.items.reduce((sum, item) => {
-    const price = productById[item.productId].prices[input.paymentMethod];
-    return sum + price * item.qty;
+    const product = productById[item.productId];
+    const itemTotal = product.soldByWeight
+      ? item.manualTotal ?? product.pricePerKg * (item.grams / 1000)
+      : product.prices[input.paymentMethod] * item.qty;
+    return sum + itemTotal;
   }, 0);
 
   const changeAmount = input.paymentMethod === 'dinheiro' && typeof input.changeFor === 'number'
@@ -30,6 +33,7 @@ export async function createOrder(input) {
     changeFor: input.changeFor ?? null,
     total,
     changeAmount,
+    status: 'pendente',
     createdAt: new Date().toISOString()
   };
 
@@ -42,4 +46,11 @@ export async function listOrdersForDay(dateISO) {
   return all
     .filter(o => localDateString(new Date(o.createdAt)) === dateISO)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export async function updateOrderStatus(id, status) {
+  const order = await get('orders', id);
+  if (!order) return;
+  order.status = status;
+  await put('orders', order);
 }

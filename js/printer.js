@@ -17,6 +17,11 @@ function encodeLatin1(text) {
   return bytes;
 }
 
+function gramsToKgLabel(grams) {
+  const kg = grams / 1000;
+  return `${parseFloat(kg.toFixed(3))}kg`.replace('.', ',');
+}
+
 export function buildReceiptBytes(order, customer, products) {
   const priceById = Object.fromEntries(products.map(p => [p.id, p]));
 
@@ -27,7 +32,8 @@ export function buildReceiptBytes(order, customer, products) {
   for (const item of order.items) {
     const product = priceById[item.productId];
     const label = product.brand ? `${product.name} ${product.brand}` : product.name;
-    lines.push(`${label} x${item.qty}`);
+    const quantityLabel = item.grams != null ? gramsToKgLabel(item.grams) : `x${item.qty}`;
+    lines.push(`${label} ${quantityLabel}`);
   }
   lines.push('');
   lines.push(`Total: R$ ${order.total.toFixed(2)}`);
