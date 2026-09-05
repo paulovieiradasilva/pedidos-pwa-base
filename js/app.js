@@ -1,6 +1,6 @@
 import { findCustomerByPhone, saveCustomer, listCustomers } from './customers.js';
 import { seedProductsIfEmpty, listProducts, listActiveProducts, saveProduct, setProductActive } from './products.js';
-import { createOrder, listOrdersForDay, localDateString, updateOrderStatus } from './orders.js';
+import { createOrder, updateOrder, listOrdersForDay, localDateString, updateOrderStatus } from './orders.js';
 import { buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
 
 document.addEventListener('alpine:init', () => {
@@ -20,6 +20,7 @@ document.addEventListener('alpine:init', () => {
     weightManualTotal: null,
     weightTotalTouched: false,
     cartItems: [],
+    editingOrderId: null,
     paymentMethod: '',
     changeFor: null,
     statusMessage: '',
@@ -164,7 +165,7 @@ document.addEventListener('alpine:init', () => {
 
     cartItemLineTotal(item) {
       if (item.grams != null) return item.manualTotal ?? 0;
-      const product = this.activeProducts.find(p => p.id === item.productId);
+      const product = this.products.find(p => p.id === item.productId);
       if (!product || !this.paymentMethod) return 0;
       return product.prices[this.paymentMethod] * item.qty;
     },
@@ -191,13 +192,37 @@ document.addEventListener('alpine:init', () => {
 
     async openNewOrderForm() {
       this.resetForm();
+      this.editingOrderId = null;
       this.showOrderForm = true;
       this.customers = await listCustomers();
       this.activeProducts = await listActiveProducts();
     },
 
+    async startEditOrder(order) {
+      this.editingOrderId = order.id;
+      this.phone = this.formatPhoneMask(order.customerPhone);
+      this.address = order.address ?? '';
+      this.newAddress = '';
+      this.paymentMethod = order.paymentMethod;
+      this.changeFor = order.changeFor ?? null;
+      this.cartItems = order.items.map(item => ({
+        ...item,
+        productName: this.productDisplayName(this.products.find(p => p.id === item.productId))
+      }));
+      this.selectedProductId = '';
+      this.qty = 1;
+      this.weightGrams = null;
+      this.weightManualTotal = null;
+      this.weightTotalTouched = false;
+      this.phoneSuggestions = [];
+      this.customers = await listCustomers();
+      this.activeProducts = await listActiveProducts();
+      this.showOrderForm = true;
+    },
+
     closeOrderForm() {
       this.resetForm();
+      this.editingOrderId = null;
       this.showOrderForm = false;
     },
 
@@ -213,7 +238,7 @@ document.addEventListener('alpine:init', () => {
         return;
       }
 
-      const missingProduct = this.cartItems.find(item => !this.activeProducts.some(p => p.id === item.productId));
+      const missingProduct = this.cartItems.find(item => !this.products.some(p => p.id === item.productId));
       if (missingProduct) {
         this.statusMessage = `Produto "${missingProduct.productName}" não está mais disponível. Remova esse item e tente novamente.`;
         return;
@@ -241,15 +266,22 @@ document.addEventListener('alpine:init', () => {
         return;
       }
 
-      await createOrder({
+      const orderInput = {
         customerPhone: phoneDigits,
         address: this.address,
         items: this.cartItems.map(({ productName, ...item }) => item),
         paymentMethod: this.paymentMethod,
         changeFor: this.paymentMethod === 'dinheiro' ? this.changeFor : undefined
-      });
+      };
 
-      this.statusMessage = 'Pedido gravado.';
+      if (this.editingOrderId) {
+        await updateOrder(this.editingOrderId, orderInput);
+        this.statusMessage = 'Pedido atualizado.';
+      } else {
+        await createOrder(orderInput);
+        this.statusMessage = 'Pedido gravado.';
+      }
+
       this.closeOrderForm();
       if (this.selectedDate === localDateString(new Date())) {
         await this.refreshOrders();
@@ -322,6 +354,12 @@ document.addEventListener('alpine:init', () => {
 
     async markOrderDelivered(order) {
       await updateOrderStatus(order.id, 'entregue');
+      await this.refreshOrders();
+    },
+
+    async cancelOrder(order) {
+      if (!confirm('Cancelar este pedido?')) return;
+      await updateOrderStatus(order.id, 'cancelado');
       await this.refreshOrders();
     },
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createOrder, listOrdersForDay, localDateString, updateOrderStatus } from '../js/orders.js';
+import { createOrder, updateOrder, listOrdersForDay, localDateString, updateOrderStatus } from '../js/orders.js';
 import { saveProduct } from '../js/products.js';
 
 beforeEach(async () => {
@@ -156,5 +156,64 @@ describe('orders', () => {
       paymentMethod: 'dinheiro'
     });
     expect(order.total).toBe(35);
+  });
+
+  it('updateOrder recalculates the total when items change', async () => {
+    const order = await createOrder({
+      customerPhone: '11988887777',
+      items: [{ productId: 'agua-10', qty: 1 }],
+      paymentMethod: 'dinheiro'
+    });
+    const updated = await updateOrder(order.id, {
+      customerPhone: order.customerPhone,
+      address: order.address,
+      items: [{ productId: 'agua-10', qty: 3 }],
+      paymentMethod: 'dinheiro'
+    });
+    expect(updated.total).toBe(30);
+  });
+
+  it('updateOrder always resets status to pendente, even for a printed order', async () => {
+    const order = await createOrder({
+      customerPhone: '11988887777',
+      items: [{ productId: 'agua-10', qty: 1 }],
+      paymentMethod: 'pix'
+    });
+    await updateOrderStatus(order.id, 'impresso');
+    const updated = await updateOrder(order.id, {
+      customerPhone: order.customerPhone,
+      address: 'Novo endereço',
+      items: [{ productId: 'agua-10', qty: 1 }],
+      paymentMethod: 'pix'
+    });
+    expect(updated.status).toBe('pendente');
+  });
+
+  it('updateOrder preserves the original id and createdAt', async () => {
+    const order = await createOrder({
+      customerPhone: '11988887777',
+      items: [{ productId: 'agua-10', qty: 1 }],
+      paymentMethod: 'pix'
+    });
+    const updated = await updateOrder(order.id, {
+      customerPhone: order.customerPhone,
+      address: 'Novo endereço',
+      items: [{ productId: 'agua-10', qty: 2 }],
+      paymentMethod: 'pix'
+    });
+    expect(updated.id).toBe(order.id);
+    expect(updated.createdAt).toBe(order.createdAt);
+  });
+
+  it('allows marking an order as cancelado', async () => {
+    const order = await createOrder({
+      customerPhone: '11988887777',
+      items: [{ productId: 'agua-10', qty: 1 }],
+      paymentMethod: 'pix'
+    });
+    await updateOrderStatus(order.id, 'cancelado');
+    const today = localDateString(new Date(order.createdAt));
+    const list = await listOrdersForDay(today);
+    expect(list.find(o => o.id === order.id).status).toBe('cancelado');
   });
 });

@@ -8,17 +8,21 @@ export function localDateString(date = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
+function computeOrderTotal(items, paymentMethod, productById) {
+  return items.reduce((sum, item) => {
+    const product = productById[item.productId];
+    const itemTotal = product.soldByWeight
+      ? item.manualTotal ?? product.pricePerKg * (item.grams / 1000)
+      : product.prices[paymentMethod] * item.qty;
+    return sum + itemTotal;
+  }, 0);
+}
+
 export async function createOrder(input) {
   const products = await listProducts();
   const productById = Object.fromEntries(products.map(p => [p.id, p]));
 
-  const total = input.items.reduce((sum, item) => {
-    const product = productById[item.productId];
-    const itemTotal = product.soldByWeight
-      ? item.manualTotal ?? product.pricePerKg * (item.grams / 1000)
-      : product.prices[input.paymentMethod] * item.qty;
-    return sum + itemTotal;
-  }, 0);
+  const total = computeOrderTotal(input.items, input.paymentMethod, productById);
 
   const changeAmount = input.paymentMethod === 'dinheiro' && typeof input.changeFor === 'number'
     ? Math.max(input.changeFor - total, 0)
@@ -36,6 +40,31 @@ export async function createOrder(input) {
     status: 'pendente',
     createdAt: new Date().toISOString()
   };
+
+  await put('orders', order);
+  return order;
+}
+
+export async function updateOrder(id, input) {
+  const order = await get('orders', id);
+  if (!order) return null;
+
+  const products = await listProducts();
+  const productById = Object.fromEntries(products.map(p => [p.id, p]));
+
+  const total = computeOrderTotal(input.items, input.paymentMethod, productById);
+  const changeAmount = input.paymentMethod === 'dinheiro' && typeof input.changeFor === 'number'
+    ? Math.max(input.changeFor - total, 0)
+    : 0;
+
+  order.customerPhone = input.customerPhone;
+  order.address = input.address ?? null;
+  order.items = input.items;
+  order.paymentMethod = input.paymentMethod;
+  order.changeFor = input.changeFor ?? null;
+  order.total = total;
+  order.changeAmount = changeAmount;
+  order.status = 'pendente';
 
   await put('orders', order);
   return order;
