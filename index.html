@@ -115,99 +115,106 @@
 
     <template x-if="currentView === 'produtos'">
       <div>
-        <h1 class="text-xl font-bold mb-4">Produtos</h1>
-
-        <div class="border rounded p-3 mb-4 bg-white">
-          <h2
-            class="font-bold mb-2"
-            x-text="productForm.id ? 'Editar produto' : 'Novo produto'"
-          ></h2>
-
-          <label class="block mb-1 text-sm">Nome</label>
-          <input
-            type="text"
-            class="border p-2 w-full mb-2"
-            x-model="productForm.name"
-          />
-
-          <label class="block mb-1 text-sm">Marca</label>
-          <input
-            type="text"
-            class="border p-2 w-full mb-2"
-            x-model="productForm.brand"
-          />
-
-          <label class="block mb-1 text-sm">Preço Dinheiro</label>
-          <input
-            type="number"
-            step="0.01"
-            class="border p-2 w-full mb-2"
-            x-model.number="productForm.priceDinheiro"
-          />
-
-          <label class="block mb-1 text-sm">Preço Pix</label>
-          <input
-            type="number"
-            step="0.01"
-            class="border p-2 w-full mb-2"
-            x-model.number="productForm.pricePix"
-          />
-
-          <label class="block mb-1 text-sm">Preço Cartão</label>
-          <input
-            type="number"
-            step="0.01"
-            class="border p-2 w-full mb-2"
-            x-model.number="productForm.priceCartao"
-          />
-
-          <p class="text-sm text-red-600 mb-2" x-text="productFormError"></p>
-
-          <div class="flex gap-2">
-            <button
-              class="bg-blue-600 text-white p-2 flex-1 rounded"
-              @click="saveProductForm()"
-            >
-              Salvar
-            </button>
-            <button
-              class="bg-gray-200 p-2 flex-1 rounded"
-              @click="startCreateProduct()"
-            >
-              Cancelar
-            </button>
-          </div>
+        <div class="flex justify-between items-baseline mb-4">
+          <h1 class="text-xl font-bold">Produtos</h1>
+          <button
+            class="bg-blue-600 text-white text-sm px-3 py-2 rounded"
+            @click="showProductForm ? closeProductForm() : openNewProductForm()"
+          >
+            + Novo produto
+          </button>
         </div>
 
-        <template x-for="p in products" :key="p.id">
-          <div
-            class="border-b py-2 text-sm flex justify-between items-start gap-2"
-            :class="!p.active && 'opacity-50'"
-          >
-            <div>
-              <p
-                class="font-bold"
-                x-text="p.name + ' ' + p.brand + (p.active ? '' : ' (inativo)')"
-              ></p>
-              <p
-                x-text="'Dinheiro: R$ ' + p.prices.dinheiro.toFixed(2) + ' | Pix: R$ ' + p.prices.pix.toFixed(2) + ' | Cartão: R$ ' + p.prices.cartao.toFixed(2)"
-              ></p>
-            </div>
-            <div class="flex flex-col gap-1 shrink-0">
-              <button
-                class="bg-gray-200 px-2 py-1 rounded text-xs"
-                @click="startEditProduct(p)"
-              >
-                Editar
-              </button>
-              <button
-                class="bg-gray-200 px-2 py-1 rounded text-xs"
-                @click="toggleProductActive(p)"
-                x-text="p.active ? 'Desativar' : 'Ativar'"
-              ></button>
+        <template x-if="showProductForm">
+          <div class="bg-white border rounded-lg p-3 mb-4">
+            <h2
+              class="font-medium text-sm mb-2"
+              x-text="productForm.id ? 'Editar produto' : 'Novo produto'"
+            ></h2>
+
+            <label class="block mb-1 text-sm">Nome</label>
+            <input type="text" class="border p-2 w-full mb-2" x-model="productForm.name" />
+
+            <label class="block mb-1 text-sm">Marca</label>
+            <input type="text" class="border p-2 w-full mb-2" x-model="productForm.brand" />
+
+            <label class="block mb-1 text-sm">Preço Dinheiro</label>
+            <input type="number" step="0.01" class="border p-2 w-full mb-2" x-model.number="productForm.priceDinheiro" />
+
+            <label class="block mb-1 text-sm">Preço Pix</label>
+            <input type="number" step="0.01" class="border p-2 w-full mb-2" x-model.number="productForm.pricePix" />
+
+            <label class="block mb-1 text-sm">Preço Cartão</label>
+            <input type="number" step="0.01" class="border p-2 w-full mb-2" x-model.number="productForm.priceCartao" />
+
+            <p class="text-sm text-red-600 mb-2" x-text="productFormError"></p>
+
+            <div class="flex gap-2">
+              <button class="bg-blue-600 text-white p-2 flex-1 rounded" @click="saveProductForm()">Salvar</button>
+              <button class="bg-gray-200 p-2 flex-1 rounded" @click="closeProductForm()">Cancelar</button>
             </div>
           </div>
         </template>
+
+        <input
+          type="text"
+          placeholder="Buscar por nome ou marca"
+          class="border p-2 w-full mb-2"
+          x-model="productSearch"
+        />
+
+        <div class="flex gap-2 mb-3">
+          <button
+            class="flex-1 p-1 rounded text-xs"
+            :class="productFilter === 'active' ? 'bg-blue-600 text-white' : 'bg-gray-200'"
+            @click="productFilter = 'active'"
+            x-text="'Ativos (' + activeProductCount() + ')'"
+          ></button>
+          <button
+            class="flex-1 p-1 rounded text-xs"
+            :class="productFilter === 'all' ? 'bg-blue-600 text-white' : 'bg-gray-200'"
+            @click="productFilter = 'all'"
+            x-text="'Todos (' + products.length + ')'"
+          ></button>
+        </div>
+
+        <template x-if="filteredProductList().length === 0">
+          <p class="text-sm text-gray-600">Nenhum produto encontrado.</p>
+        </template>
+
+        <div class="flex flex-col gap-2">
+          <template x-for="p in filteredProductList()" :key="p.id">
+            <div class="bg-white border rounded-lg p-3" :class="!p.active && 'opacity-50'">
+              <div class="flex justify-between items-start gap-2">
+                <div>
+                  <p class="text-sm font-medium" x-text="p.name"></p>
+                  <p class="text-xs text-gray-600" x-text="p.brand + (p.active ? '' : ' · inativo')"></p>
+                </div>
+                <div class="flex gap-1 shrink-0">
+                  <button
+                    class="bg-gray-200 rounded w-8 h-8 text-sm"
+                    aria-label="Editar"
+                    @click="startEditProduct(p)"
+                  >
+                    ✎
+                  </button>
+                  <button
+                    class="bg-gray-200 rounded w-8 h-8 text-sm"
+                    :aria-label="p.active ? 'Desativar' : 'Ativar'"
+                    @click="toggleProductActive(p)"
+                  >
+                    ⏻
+                  </button>
+                </div>
+              </div>
+              <div class="flex gap-1 mt-2 flex-wrap">
+                <span class="text-xs px-2 py-1 rounded-full" :class="paymentMethodPillClass('dinheiro')" x-text="'Dinheiro R$ ' + p.prices.dinheiro.toFixed(2)"></span>
+                <span class="text-xs px-2 py-1 rounded-full" :class="paymentMethodPillClass('pix')" x-text="'Pix R$ ' + p.prices.pix.toFixed(2)"></span>
+                <span class="text-xs px-2 py-1 rounded-full" :class="paymentMethodPillClass('cartao')" x-text="'Cartão R$ ' + p.prices.cartao.toFixed(2)"></span>
+              </div>
+            </div>
+          </template>
+        </div>
       </div>
     </template>
 

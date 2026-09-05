@@ -25,6 +25,9 @@ document.addEventListener('alpine:init', () => {
 
     productForm: { id: null, name: '', brand: '', priceDinheiro: null, pricePix: null, priceCartao: null },
     productFormError: '',
+    showProductForm: false,
+    productSearch: '',
+    productFilter: 'active',
 
     async init() {
       await seedProductsIfEmpty();
@@ -184,9 +187,22 @@ document.addEventListener('alpine:init', () => {
       return { dinheiro: 'text-green-700', pix: 'text-blue-700', cartao: 'text-purple-700' }[method] ?? 'text-gray-600';
     },
 
-    startCreateProduct() {
+    paymentMethodPillClass(method) {
+      return {
+        dinheiro: 'bg-green-50 text-green-700',
+        pix: 'bg-blue-50 text-blue-700',
+        cartao: 'bg-purple-50 text-purple-700'
+      }[method] ?? 'bg-gray-100 text-gray-700';
+    },
+
+    resetProductForm() {
       this.productForm = { id: null, name: '', brand: '', priceDinheiro: null, pricePix: null, priceCartao: null };
       this.productFormError = '';
+    },
+
+    openNewProductForm() {
+      this.resetProductForm();
+      this.showProductForm = true;
     },
 
     startEditProduct(product) {
@@ -199,6 +215,12 @@ document.addEventListener('alpine:init', () => {
         priceCartao: product.prices.cartao
       };
       this.productFormError = '';
+      this.showProductForm = true;
+    },
+
+    closeProductForm() {
+      this.resetProductForm();
+      this.showProductForm = false;
     },
 
     async saveProductForm() {
@@ -224,7 +246,18 @@ document.addEventListener('alpine:init', () => {
         prices
       });
       this.products = await listProducts();
-      this.startCreateProduct();
+      this.closeProductForm();
+    },
+
+    activeProductCount() {
+      return this.products.filter(p => p.active).length;
+    },
+
+    filteredProductList() {
+      const query = this.productSearch.trim().toLowerCase();
+      return this.products
+        .filter(p => this.productFilter === 'all' || p.active)
+        .filter(p => !query || (p.name + ' ' + p.brand).toLowerCase().includes(query));
     },
 
     async toggleProductActive(product) {
