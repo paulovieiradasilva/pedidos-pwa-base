@@ -438,7 +438,8 @@ document.addEventListener('alpine:init', () => {
         dinheiro: { strokeWidth: 2, body: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/>' },
         cartao: { strokeWidth: 2, body: '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>' },
         pix: { strokeWidth: 2, body: '<rect x="4" y="4" width="16" height="16" rx="5" transform="rotate(45 12 12)"/>' },
-        chevronDown: { strokeWidth: 2, body: '<path d="m6 9 6 6 6-6"/>' }
+        chevronDown: { strokeWidth: 2, body: '<path d="m6 9 6 6 6-6"/>' },
+        calendar: { strokeWidth: 2, body: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>' }
       };
       const spec = paths[name];
       if (!spec) return '';

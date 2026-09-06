@@ -490,12 +490,18 @@
         <template x-if="!showOrderForm">
           <div>
             <div class="flex items-center gap-2 mb-3">
-              <input
-                type="date"
-                class="border rounded-lg p-2 flex-1"
-                x-model="selectedDate"
-                @change="refreshOrders()"
-              />
+              <div class="relative flex-1">
+                <input
+                  type="date"
+                  class="border rounded-lg p-2 pr-9 w-full [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  x-model="selectedDate"
+                  @change="refreshOrders()"
+                />
+                <span
+                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
+                  x-html="icon('calendar')"
+                ></span>
+              </div>
               <span
                 class="text-sm text-gray-600 whitespace-nowrap"
                 x-text="filteredOrders().length + ' pedido(s)'"
