@@ -1,11 +1,11 @@
-const CACHE_NAME = 'pedidos-cache-v3';
+const CACHE_NAME = 'pedidos-cache-v4';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './config.js',
-  './icon-192.png',
-  './icon-512.png',
+  './icon-192-sacola.png',
+  './icon-512-sacola.png',
   './vendor/tailwind.js',
   './vendor/alpine.min.js',
   './js/db.js',
