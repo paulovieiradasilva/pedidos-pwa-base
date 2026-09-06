@@ -439,7 +439,12 @@ document.addEventListener('alpine:init', () => {
         cartao: { strokeWidth: 2, body: '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>' },
         pix: { strokeWidth: 2, body: '<rect x="4" y="4" width="16" height="16" rx="5" transform="rotate(45 12 12)"/>' },
         chevronDown: { strokeWidth: 2, body: '<path d="m6 9 6 6 6-6"/>' },
-        calendar: { strokeWidth: 2, body: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>' }
+        calendar: { strokeWidth: 2, body: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>' },
+        person: { strokeWidth: 2, body: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
+        package: { strokeWidth: 2, body: '<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/>' },
+        location: { strokeWidth: 2, body: '<path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/>' },
+        shoppingBag: { strokeWidth: 2, body: '<path d="M6 7h12l1 13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/>' },
+        list: { strokeWidth: 2, body: '<path d="M4 6h16M4 12h16M4 18h10"/>' }
       };
       const spec = paths[name];
       if (!spec) return '';

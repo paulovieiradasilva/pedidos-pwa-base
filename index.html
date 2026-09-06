@@ -26,18 +26,18 @@
   >
     <nav class="flex border-b border-gray-200 mb-5">
       <button
-        class="flex-1 pb-3 text-sm"
-        :class="currentView === 'produtos' ? 'font-semibold text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'"
-        @click="setView('produtos')"
-      >
-        Produtos
-      </button>
-      <button
-        class="flex-1 pb-3 text-sm"
+        class="flex-1 pb-3 text-base"
         :class="currentView === 'pedidosDoDia' ? 'font-semibold text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'"
         @click="setView('pedidosDoDia')"
       >
-        Pedidos
+        <span x-html="icon('shoppingBag', 24) + ' Pedidos'"></span>
+      </button>
+      <button
+        class="flex-1 pb-3 text-base"
+        :class="currentView === 'produtos' ? 'font-semibold text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'"
+        @click="setView('produtos')"
+      >
+        <span x-html="icon('list', 24) + ' Produtos'"></span>
       </button>
     </nav>
 
@@ -60,10 +60,13 @@
           <div
             class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4"
           >
-            <h2
-              class="font-medium text-sm mb-2"
-              x-text="productForm.id ? 'Editar produto' : 'Novo produto'"
-            ></h2>
+            <div class="flex items-center gap-1.5 mb-3">
+              <span class="text-blue-600" x-html="icon('package')"></span>
+              <span
+                class="text-xs font-semibold text-blue-600 uppercase tracking-wide"
+                x-text="productForm.id ? 'Editar produto' : 'Novo produto'"
+              ></span>
+            </div>
 
             <label class="block mb-1 text-sm">Nome</label>
             <input
@@ -281,7 +284,10 @@
             <div
               class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4"
             >
-              <label class="block mb-1 text-sm">Telefone</label>
+              <div class="flex items-center gap-1.5 mb-3">
+                <span class="text-blue-600" x-html="icon('person')"></span>
+                <span class="text-xs font-semibold text-blue-600 uppercase tracking-wide">Cliente</span>
+              </div>
               <div class="relative mb-1">
                 <input
                   type="tel"
@@ -315,8 +321,8 @@
                 </template>
               </div>
               <p
-                class="text-xs text-gray-600 mb-3"
-                x-text="address ? 'Endereço: ' + address : 'Cliente novo — informe o endereço abaixo'"
+                class="text-xs text-gray-600 mb-3 flex items-center gap-1"
+                x-html="address ? icon('location') + ' ' + address : 'Cliente novo — informe o endereço abaixo'"
               ></p>
               <template x-if="!address">
                 <input
@@ -326,8 +332,15 @@
                   x-model="newAddress"
                 />
               </template>
+            </div>
 
-              <label class="block mb-1 text-sm">Produto</label>
+            <div
+              class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4"
+            >
+              <div class="flex items-center gap-1.5 mb-3">
+                <span class="text-blue-600" x-html="icon('package')"></span>
+                <span class="text-xs font-semibold text-blue-600 uppercase tracking-wide">Adicionar produto</span>
+              </div>
               <div class="relative mb-3">
                 <select
                   class="border rounded-lg p-2 w-full appearance-none pr-9"
@@ -628,10 +641,10 @@
                     ></span>
                   </div>
                   <template x-if="o.address">
-                    <p
-                      class="text-xs text-gray-600 truncate"
-                      x-text="o.address"
-                    ></p>
+                    <p class="text-xs text-gray-600 flex items-center gap-1">
+                      <span class="shrink-0" x-html="icon('location')"></span>
+                      <span class="truncate" x-text="o.address"></span>
+                    </p>
                   </template>
                   <ul class="mt-1 flex flex-col gap-0.5">
                     <template x-for="label in orderItemLabels(o)" :key="label">
