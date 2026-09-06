@@ -45,11 +45,14 @@ Após publicar a aplicação em produção (GitHub Pages ou qualquer servidor we
    git push
    ```
 
-3. **IMPORTANTE — incremente `CACHE_NAME` em `service-worker.js` antes de todo deploy:**
-   O service worker usa cache-first e só percebe arquivos novos quando o nome do cache muda. Antes de fazer commit de qualquer alteração, edite a constante `CACHE_NAME` no topo de `service-worker.js` (por exemplo, de `'pedidos-cache-v1'` para `'pedidos-cache-v2'`). Se você esquecer esse passo, o service worker **não vai buscar os arquivos novos** e o tablet continuará rodando a versão antiga indefinidamente, mesmo com internet.
+3. **IMPORTANTE — incremente 2 números antes de todo deploy:**
+   - `CACHE_NAME` no topo de `service-worker.js` (ex.: `'pedidos-cache-v4'` → `'pedidos-cache-v5'`). O service worker usa cache-first e só percebe arquivos novos quando o nome do cache muda.
+   - `?v=N` na chamada `navigator.serviceWorker.register("./service-worker.js?v=N")`, no `<script>` no fim de `index.html` (ex.: `?v=4` → `?v=5`). **Esse é o passo que mais importa em hosts sem controle de cache HTTP (GitHub Pages não deixa customizar isso, ao contrário do Netlify)**: o GitHub Pages sempre serve `service-worker.js` com `cache-control: max-age=600`, e em alguns navegadores/Android isso faz o `registration.update()` reaproveitar uma cópia em cache do arquivo mesmo quando ele mudou, achando que nada é diferente. Mudar a URL (`?v=N`) força buscar um arquivo "novo" que o navegador nunca viu, contornando esse cache por completo.
 
-4. **Recarregue a aplicação no tablet com internet:**
-   Acesse a URL da aplicação no tablet com conexão de rede ativa. Como o novo `CACHE_NAME` força a reinstalação do service worker, ele assume o controle imediatamente (`skipWaiting`/`clients.claim`) e busca os arquivos atualizados. Não é necessário reinstalar a aplicação — basta abrir de novo com internet para buscar a versão mais recente.
+   Se esquecer qualquer um dos dois, o app **pode continuar rodando a versão antiga indefinidamente**, mesmo com internet e mesmo com o mecanismo de auto-atualização.
+
+4. **Reabra a aplicação no celular com internet:**
+   Como o novo `CACHE_NAME`/`?v=N` força a reinstalação do service worker, ele assume o controle assim que reabre o app (`skipWaiting`/`clients.claim`) e a página recarrega sozinha com os arquivos atualizados. Não precisa reinstalar o app — só abrir de novo com internet.
 
 ## Configurando a impressora
 
