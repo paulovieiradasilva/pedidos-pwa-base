@@ -24,7 +24,9 @@ document.addEventListener('alpine:init', () => {
     editingCartItemIndex: null,
     paymentMethod: '',
     changeFor: null,
-    statusMessage: '',
+    toastMessage: '',
+    toastVisible: false,
+    toastTimer: null,
     showOrderForm: false,
     todayOrders: [],
     visibleOrderCount: 15,
@@ -32,7 +34,6 @@ document.addEventListener('alpine:init', () => {
     paymentFilter: { dinheiro: true, pix: true, cartao: true },
     orderStatusTab: 'pendente',
     selectedOrderIds: [],
-    batchPrintMessage: '',
     printerCharacteristic: null,
 
     productForm: {
@@ -52,6 +53,15 @@ document.addEventListener('alpine:init', () => {
       await this.setView('pedidosDoDia');
     },
 
+    showToast(message) {
+      clearTimeout(this.toastTimer);
+      this.toastMessage = message;
+      this.toastVisible = true;
+      this.toastTimer = setTimeout(() => {
+        this.toastVisible = false;
+      }, 4000);
+    },
+
     async setView(view) {
       this.currentView = view;
       if (view === 'produtos') {
@@ -61,7 +71,6 @@ document.addEventListener('alpine:init', () => {
         this.activeProducts = await listActiveProducts();
         this.customers = await listCustomers();
         this.selectedOrderIds = [];
-        this.batchPrintMessage = '';
         await this.refreshOrders();
       }
     },
@@ -69,7 +78,6 @@ document.addEventListener('alpine:init', () => {
     setOrderStatusTab(tab) {
       this.orderStatusTab = tab;
       this.selectedOrderIds = [];
-      this.batchPrintMessage = '';
     },
 
     formatPhoneMask(value) {
@@ -146,7 +154,7 @@ document.addEventListener('alpine:init', () => {
     addCartItem() {
       const error = this.validateCurrentItem();
       if (error) {
-        this.statusMessage = error;
+        this.showToast(error);
         return;
       }
 
@@ -167,7 +175,6 @@ document.addEventListener('alpine:init', () => {
       this.weightGrams = null;
       this.weightManualTotal = null;
       this.weightTotalTouched = false;
-      this.statusMessage = '';
     },
 
     startEditCartItem(index) {
@@ -262,30 +269,30 @@ document.addEventListener('alpine:init', () => {
     async saveOrder() {
       const phoneDigits = this.phoneDigits();
       if (phoneDigits.length !== 10 && phoneDigits.length !== 11) {
-        this.statusMessage = 'Informe um telefone válido com DDD.';
+        this.showToast('Informe um telefone válido com DDD.');
         return;
       }
 
       if (this.cartItems.length === 0) {
-        this.statusMessage = 'Adicione ao menos um item antes de gravar.';
+        this.showToast('Adicione ao menos um item antes de gravar.');
         return;
       }
 
       const missingProduct = this.cartItems.find(item => !this.products.some(p => p.id === item.productId));
       if (missingProduct) {
-        this.statusMessage = `Produto "${missingProduct.productName}" não está mais disponível. Remova esse item e tente novamente.`;
+        this.showToast(`Produto "${missingProduct.productName}" não está mais disponível. Remova esse item e tente novamente.`);
         return;
       }
 
       if (!this.paymentMethod) {
-        this.statusMessage = 'Selecione a forma de pagamento antes de gravar.';
+        this.showToast('Selecione a forma de pagamento antes de gravar.');
         return;
       }
 
       if (this.paymentMethod === 'dinheiro' && this.changeFor != null) {
         const prospectiveTotal = this.orderTotal();
         if (this.changeFor < prospectiveTotal) {
-          this.statusMessage = 'Troco para valor menor que o total do pedido. Verifique o valor informado.';
+          this.showToast('Troco para valor menor que o total do pedido. Verifique o valor informado.');
           return;
         }
       }
@@ -295,7 +302,7 @@ document.addEventListener('alpine:init', () => {
         this.address = this.newAddress;
       }
       if (!this.address) {
-        this.statusMessage = 'Informe o endereço antes de gravar.';
+        this.showToast('Informe o endereço antes de gravar.');
         return;
       }
 
@@ -309,10 +316,10 @@ document.addEventListener('alpine:init', () => {
 
       if (this.editingOrderId) {
         await updateOrder(this.editingOrderId, orderInput);
-        this.statusMessage = 'Pedido atualizado.';
+        this.showToast('Pedido atualizado.');
       } else {
         await createOrder(orderInput);
-        this.statusMessage = 'Pedido gravado.';
+        this.showToast('Pedido gravado.');
       }
 
       this.closeOrderForm();
@@ -378,9 +385,9 @@ document.addEventListener('alpine:init', () => {
         }
       }
 
-      this.batchPrintMessage = failed > 0
+      this.showToast(failed > 0
         ? `${printed} de ${ids.length} impressos. ${failed} falhou/falharam: mantido(s) em pendente.`
-        : `${printed} pedido(s) impresso(s).`;
+        : `${printed} pedido(s) impresso(s).`);
       this.selectedOrderIds = [];
       await this.refreshOrders();
     },
