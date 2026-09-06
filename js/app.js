@@ -405,6 +405,10 @@ document.addEventListener('alpine:init', () => {
       return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${spec.strokeWidth}" style="display:inline;vertical-align:${valign}px">${spec.body}</svg>`;
     },
 
+    soldByWeightEnabled() {
+      return window.APP_CONFIG?.features?.soldByWeight ?? true;
+    },
+
     paymentMethodAccentClass(method) {
       return { dinheiro: 'border-l-green-600', pix: 'border-l-blue-600', cartao: 'border-l-purple-600' }[method] ?? 'border-l-gray-400';
     },

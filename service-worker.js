@@ -1,8 +1,9 @@
-const CACHE_NAME = 'pedidos-cache-v1';
+const CACHE_NAME = 'pedidos-cache-v2';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
+  './config.js',
   './vendor/tailwind.js',
   './vendor/alpine.min.js',
   './js/db.js',

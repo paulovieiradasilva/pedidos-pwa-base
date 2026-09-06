@@ -8,8 +8,12 @@
     />
     <title>Pedidos</title>
     <link rel="manifest" href="manifest.json" />
+    <script src="config.js"></script>
     <script src="vendor/tailwind.js"></script>
     <script type="module" src="js/app.js"></script>
+    <script>
+      document.title = window.APP_CONFIG?.businessName ?? document.title;
+    </script>
   </head>
 
   <body
@@ -73,10 +77,12 @@
               x-model="productForm.brand"
             />
 
-            <label class="flex items-center gap-2 text-sm mb-2">
-              <input type="checkbox" x-model="productForm.soldByWeight" />
-              Vendido por peso (kg)
-            </label>
+            <template x-if="soldByWeightEnabled()">
+              <label class="flex items-center gap-2 text-sm mb-2">
+                <input type="checkbox" x-model="productForm.soldByWeight" />
+                Vendido por peso (kg)
+              </label>
+            </template>
 
             <template x-if="!productForm.soldByWeight">
               <div>
