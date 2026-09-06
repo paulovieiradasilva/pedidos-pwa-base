@@ -711,7 +711,19 @@
 
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./service-worker.js");
+        navigator.serviceWorker.register("./service-worker.js").then((reg) => {
+          reg.update();
+          document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") reg.update();
+          });
+        });
+
+        let reloadedForUpdate = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (reloadedForUpdate) return;
+          reloadedForUpdate = true;
+          window.location.reload();
+        });
       }
     </script>
   </body>
