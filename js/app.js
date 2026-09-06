@@ -15,12 +15,13 @@ document.addEventListener('alpine:init', () => {
     customers: [],
     phoneSuggestions: [],
     selectedProductId: '',
-    qty: 1,
+    qty: null,
     weightGrams: null,
     weightManualTotal: null,
     weightTotalTouched: false,
     cartItems: [],
     editingOrderId: null,
+    editingCartItemIndex: null,
     paymentMethod: '',
     changeFor: null,
     statusMessage: '',
@@ -138,6 +139,10 @@ document.addEventListener('alpine:init', () => {
       return null;
     },
 
+    onQtyInput(value) {
+      this.qty = value === '' ? null : Number(value);
+    },
+
     addCartItem() {
       const error = this.validateCurrentItem();
       if (error) {
@@ -150,17 +155,43 @@ document.addEventListener('alpine:init', () => {
         ? { productId: this.selectedProductId, productName: this.productDisplayName(selectedProduct), grams: this.weightGrams, manualTotal: this.weightManualTotal }
         : { productId: this.selectedProductId, productName: this.productDisplayName(selectedProduct), qty: this.qty };
 
-      this.cartItems.push(item);
+      if (this.editingCartItemIndex != null) {
+        this.cartItems[this.editingCartItemIndex] = item;
+        this.editingCartItemIndex = null;
+      } else {
+        this.cartItems.push(item);
+      }
+
       this.selectedProductId = '';
-      this.qty = 1;
+      this.qty = null;
       this.weightGrams = null;
       this.weightManualTotal = null;
       this.weightTotalTouched = false;
       this.statusMessage = '';
     },
 
+    startEditCartItem(index) {
+      const item = this.cartItems[index];
+      this.selectedProductId = item.productId;
+      if (item.grams != null) {
+        this.weightGrams = item.grams;
+        this.weightManualTotal = item.manualTotal;
+        this.weightTotalTouched = true;
+        this.qty = null;
+      } else {
+        this.qty = item.qty;
+        this.weightGrams = null;
+        this.weightManualTotal = null;
+        this.weightTotalTouched = false;
+      }
+      this.editingCartItemIndex = index;
+    },
+
     removeCartItem(index) {
       this.cartItems.splice(index, 1);
+      if (this.editingCartItemIndex === index) {
+        this.editingCartItemIndex = null;
+      }
     },
 
     cartItemLineTotal(item) {
@@ -179,11 +210,12 @@ document.addEventListener('alpine:init', () => {
       this.phone = '';
       this.address = '';
       this.newAddress = '';
-      this.qty = 1;
+      this.qty = null;
       this.weightGrams = null;
       this.weightManualTotal = null;
       this.weightTotalTouched = false;
       this.cartItems = [];
+      this.editingCartItemIndex = null;
       this.paymentMethod = '';
       this.changeFor = null;
       this.selectedProductId = '';
@@ -210,10 +242,11 @@ document.addEventListener('alpine:init', () => {
         productName: this.productDisplayName(this.products.find(p => p.id === item.productId))
       }));
       this.selectedProductId = '';
-      this.qty = 1;
+      this.qty = null;
       this.weightGrams = null;
       this.weightManualTotal = null;
       this.weightTotalTouched = false;
+      this.editingCartItemIndex = null;
       this.phoneSuggestions = [];
       this.customers = await listCustomers();
       this.activeProducts = await listActiveProducts();
@@ -397,7 +430,8 @@ document.addEventListener('alpine:init', () => {
         close: { strokeWidth: 2, body: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>' },
         dinheiro: { strokeWidth: 2, body: '<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/>' },
         cartao: { strokeWidth: 2, body: '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>' },
-        pix: { strokeWidth: 2, body: '<rect x="4" y="4" width="16" height="16" rx="5" transform="rotate(45 12 12)"/>' }
+        pix: { strokeWidth: 2, body: '<rect x="4" y="4" width="16" height="16" rx="5" transform="rotate(45 12 12)"/>' },
+        chevronDown: { strokeWidth: 2, body: '<path d="m6 9 6 6 6-6"/>' }
       };
       const spec = paths[name];
       if (!spec) return '';
