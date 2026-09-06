@@ -202,13 +202,13 @@
                       <button
                         class="bg-gray-100 rounded-lg w-8 h-8 text-sm flex items-center justify-center"
                         aria-label="Editar ..."
-                        x-html="icon('edit')"
+                        x-html="icon('edit', 20)"
                         @click="startEditProduct(p)"
                       ></button>
                       <button
                         class="bg-gray-100 rounded-lg w-8 h-8 text-sm flex items-center justify-center"
                         :aria-label="p.active ? 'Desativar' : 'Ativar'"
-                        x-html="icon('power')"
+                        x-html="icon('power', 20)"
                         @click="toggleProductActive(p)"
                       ></button>
                     </div>
@@ -400,9 +400,9 @@
                       </template>
                       <button
                         type="button"
-                        class="text-gray-500 w-6 h-6 flex items-center justify-center"
+                        class="text-gray-500 w-7 h-7 flex items-center justify-center"
                         aria-label="Remover item"
-                        x-html="icon('close')"
+                        x-html="icon('close', 18)"
                         @click="removeCartItem(index)"
                       ></button>
                     </span>
@@ -546,7 +546,7 @@
                   x-model="paymentFilter.dinheiro"
                   @change="onFilterChange()"
                 />
-                <span aria-hidden="true" x-html="icon('dinheiro')"></span>
+                <span aria-hidden="true" x-html="icon('dinheiro', 18)"></span>
               </label>
               <label
                 class="flex items-center gap-1 border rounded-full px-3 py-1 cursor-pointer"
@@ -572,7 +572,7 @@
                   x-model="paymentFilter.cartao"
                   @change="onFilterChange()"
                 />
-                <span aria-hidden="true" x-html="icon('cartao')"></span>
+                <span aria-hidden="true" x-html="icon('cartao', 18)"></span>
               </label>
             </div>
 
@@ -630,7 +630,7 @@
                       class="text-xs font-medium"
                       :class="paymentMethodTextClass(o.paymentMethod)"
                       :title="paymentMethodLabel(o.paymentMethod)"
-                      x-html="icon(o.paymentMethod)"
+                      x-html="icon(o.paymentMethod, 18)"
                     ></span>
                     <div class="flex gap-3 text-xs font-medium">
                       <template
