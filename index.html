@@ -16,6 +16,28 @@
     <script>
       document.title = window.APP_CONFIG?.businessName ?? document.title;
     </script>
+    <style>
+      select {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-image: none;
+      }
+      select::-ms-expand {
+        display: none;
+      }
+      input[type="date"]::-webkit-calendar-picker-indicator {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        color: transparent;
+        cursor: pointer;
+      }
+    </style>
   </head>
 
   <body
@@ -341,9 +363,9 @@
                 <span class="text-blue-600" x-html="icon('package')"></span>
                 <span class="text-xs font-semibold text-blue-600 uppercase tracking-wide">Adicionar produto</span>
               </div>
-              <div class="relative mb-3">
+              <div class="relative mb-3 border rounded-lg overflow-hidden">
                 <select
-                  class="border rounded-lg p-2 w-full appearance-none pr-9"
+                  class="p-2 pr-9 w-[calc(100%+40px)] appearance-none bg-white border-0 outline-none"
                   x-model="selectedProductId"
                 >
                   <option value="" disabled>Selecione um produto</option>
@@ -506,7 +528,7 @@
               <div class="relative flex-1">
                 <input
                   type="date"
-                  class="border rounded-lg p-2 pr-9 w-full [&::-webkit-calendar-picker-indicator]:opacity-0"
+                  class="border rounded-lg p-2 pr-9 w-full"
                   x-model="selectedDate"
                   @change="refreshOrders()"
                 />
@@ -730,7 +752,7 @@
 
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./service-worker.js?v=5").then((reg) => {
+        navigator.serviceWorker.register("./service-worker.js?v=7").then((reg) => {
           reg.update();
           document.addEventListener("visibilitychange", () => {
             if (document.visibilityState === "visible") reg.update();
