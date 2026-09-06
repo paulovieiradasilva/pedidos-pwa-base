@@ -1,6 +1,8 @@
 # Pedidos PWA
 
-Uma aplicação web progressiva (PWA) que permite ao proprietário de uma distribuidora de água e gás transformar pedidos recebidos via WhatsApp em comprovantes impressos via impressora térmica Bluetooth e em uma lista diária organizada, sem duplicar manualmente o trabalho. A aplicação funciona completamente offline, com sincronização de dados via IndexedDB do navegador e impressão direta via Web Bluetooth API.
+Uma aplicação web progressiva (PWA) que permite ao proprietário de uma distribuidora de água e gás transformar pedidos recebidos via WhatsApp em comprovantes impressos via impressora térmica Bluetooth e em uma lista diária organizada, sem duplicar manualmente o trabalho. A aplicação funciona completamente offline, com dados salvos no IndexedDB do navegador e impressão direta via Web Bluetooth API.
+
+Um pedido pode ter vários produtos diferentes (água, gás, ração etc, cada um com preço por forma de pagamento ou por peso), passa por um ciclo de status (pendente → impresso → entregue, ou cancelado) e pode ser editado ou cancelado depois de gravado. O app é pensado para ser vendido a outros distribuidores: cada cliente recebe sua própria cópia publicada, customizável sem afetar os demais — veja [DEPLOY.md](DEPLOY.md).
 
 ## Configuração e Desenvolvimento Local
 
@@ -74,16 +76,18 @@ Além disso, em `js/printer.js`:
 ```
 .
 ├── index.html              # Arquivo principal da aplicação PWA
-├── manifest.json           # Manifest do PWA (ícone, nome, tema)
+├── manifest.json           # Manifest do PWA (ícone, nome, tema) — customizado por cliente
+├── config.js               # Configuração por cliente (nome do negócio, feature flags)
 ├── service-worker.js       # Service worker para cache offline
 ├── icon-192.png           # Ícone da aplicação (192x192px)
+├── DEPLOY.md               # Como publicar e distribuir uma cópia por cliente
 │
 ├── js/                     # Módulos JavaScript (ES modules)
 │   ├── app.js             # Componente Alpine.js principal wiring da UI
 │   ├── db.js              # Wrapper do IndexedDB (open/get/put/getAll)
-│   ├── customers.js       # Busca/salva cliente por telefone
-│   ├── products.js        # Catálogo de produtos com seed padrão
-│   ├── orders.js          # Criação de pedidos, cálculo de total e troco
+│   ├── customers.js       # Busca/salva cliente por telefone, lista pra autocomplete
+│   ├── products.js        # Catálogo de produtos (preço fixo ou por peso) com seed padrão
+│   ├── orders.js          # Criação/edição de pedidos, cálculo de total e troco, status
 │   └── printer.js         # Construção de recibo ESC/POS e envio via Bluetooth
 │
 ├── vendor/                 # Dependências front-end localmente hospedadas
@@ -108,19 +112,18 @@ Além disso, em `js/printer.js`:
 
 ### Telas (menu)
 
-O app tem 3 telas, alternadas por um menu fixo no topo (sem router, é tudo `x-if` do Alpine dentro do mesmo `index.html`):
+O app tem 2 telas, alternadas por um menu fixo no topo (sem router, é tudo `x-if` do Alpine dentro do mesmo `index.html`):
 
-- **Novo Pedido:** fluxo principal — telefone, endereço, produto, quantidade, pagamento, total ao vivo, confirmar/imprimir.
-- **Produtos:** CRUD de produtos — cadastrar/editar nome, marca e os 3 preços (dinheiro/pix/cartão); "excluir" é sempre inativar (soft delete), nunca apagar de vez, pra não quebrar recibos/pedidos antigos que já usaram aquele produto. Produto inativo some do dropdown de Novo Pedido mas continua na lista de Produtos (esmaecido, com botão "Ativar").
-- **Pedidos do Dia:** tabela somente leitura dos pedidos do dia (hora, telefone, itens, pagamento, total), mais recente primeiro, com botão "Mostrar mais" (carrega 15 por vez) — pensado pra dar conta de 50+ pedidos/dia em dias de pico.
+- **Produtos:** CRUD de produtos — nome, marca (opcional) e preço, que pode ser os 3 valores por forma de pagamento (dinheiro/pix/cartão, com sincronização automática entre eles ao digitar) ou um preço único por kg pra produtos "vendidos por peso" (ex: ração). "Excluir" é sempre inativar (soft delete), nunca apagar de vez, pra não quebrar pedidos antigos que já usaram aquele produto. Produto inativo some do formulário de novo pedido mas continua na lista de Produtos (esmaecido, com botão pra reativar).
+- **Pedidos:** lista do dia, com filtro de data, abas de status (Pendente/Impresso/Entregue/Cancelado) e filtro por forma de pagamento. O botão "+ Novo pedido" abre um formulário (telefone com autocomplete de cliente já cadastrado, endereço, carrinho com vários produtos diferentes no mesmo pedido, pagamento, troco) que substitui a lista enquanto está aberto. Cada pedido na aba Pendente/Impresso pode ser editado (reabre o mesmo formulário preenchido) ou cancelado; editar um pedido já impresso volta ele pra Pendente. Pedidos pendentes podem ser selecionados e impressos em lote (mesma conexão Bluetooth), o que move cada um pra "Impresso"; de lá, "Marcar entregue" fecha o ciclo.
 
 ### Fluxo de Dados
 
-1. **Entrada:** O proprietário digita telefone, endereço (se novo), seleciona produto/quantidade e método de pagamento.
-2. **Processamento:** A aplicação calcula total e troco usando o preço do produto correspondente à forma de pagamento escolhida, cria pedido no IndexedDB com timestamp.
-3. **Impressão:** ESC/POS recibo é construído e enviado via Web Bluetooth para impressora térmica.
-4. **Armazenamento:** Pedido fica disponível offline; lista diária é consultável a qualquer momento na tela Pedidos do Dia.
-5. **Sincronização:** Service worker cache garante que app funciona sem internet após primeiro acesso.
+1. **Entrada:** O proprietário digita o telefone (sugestões de clientes já cadastrados aparecem a partir de 3 dígitos), endereço (se novo), monta o carrinho com um ou mais produtos/quantidades e escolhe a forma de pagamento.
+2. **Gravação:** A aplicação calcula o total somando cada item (preço da forma de pagamento escolhida, ou preço por kg pros itens por peso) e salva o pedido no IndexedDB como "pendente".
+3. **Impressão:** Feita à parte, na aba Pendente — seleciona um ou mais pedidos e imprime; o recibo ESC/POS é construído e enviado via Web Bluetooth pra impressora térmica, e o(s) pedido(s) impresso(s) com sucesso viram "impresso".
+4. **Acompanhamento:** o pedido segue pendente → impresso → entregue (ou cancelado a qualquer momento antes de entregue, reversível pela aba Cancelado); tudo consultável offline nas abas de status.
+5. **Sincronização:** Service worker cacheia os arquivos na primeira visita; app continua funcionando sem rede depois disso.
 
 ## Notas de Implementação
 
@@ -128,4 +131,5 @@ O app tem 3 telas, alternadas por um menu fixo no topo (sem router, é tudo `x-i
 - **Sem leitura automática de WhatsApp:** O proprietário digita manualmente o número e pedido.
 - **Offline-first:** Service worker cacheia assets na primeira visita; app continua funcionando sem rede.
 - **Impressora:** Única integração externa é via Bluetooth — não usa SPP (Bluetooth Clássico), apenas BLE GATT.
-- **Preço por forma de pagamento:** cada produto guarda 3 preços fixos (`prices.dinheiro`, `prices.pix`, `prices.cartao`), não uma fórmula de acréscimo — o total do pedido usa o preço da forma de pagamento escolhida.
+- **Preço por produto:** cada produto guarda 3 preços fixos (`prices.dinheiro`, `prices.pix`, `prices.cartao`) OU, se marcado como vendido por peso, um único `pricePerKg` — nunca os dois ao mesmo tempo. O total do pedido soma cada item com a regra que se aplica a ele.
+- **Multi-cliente:** `config.js` é o único arquivo pensado pra mudar entre instalações do mesmo código — nome do negócio e feature flags (ex: desligar a venda por peso pra quem não usa). Veja [DEPLOY.md](DEPLOY.md) pra como publicar uma cópia nova por cliente sem afetar as demais.
