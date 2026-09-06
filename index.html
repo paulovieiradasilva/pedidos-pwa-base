@@ -202,13 +202,13 @@
                       <button
                         class="bg-gray-100 rounded-lg w-8 h-8 text-sm flex items-center justify-center"
                         aria-label="Editar ..."
-                        x-html="icon('edit', 20)"
+                        x-html="icon('edit', 14)"
                         @click="startEditProduct(p)"
                       ></button>
                       <button
                         class="bg-gray-100 rounded-lg w-8 h-8 text-sm flex items-center justify-center"
                         :aria-label="p.active ? 'Desativar' : 'Ativar'"
-                        x-html="icon('power', 20)"
+                        x-html="icon('power', 14)"
                         @click="toggleProductActive(p)"
                       ></button>
                     </div>
@@ -225,7 +225,7 @@
                         class="text-xs px-2 py-1 rounded-full"
                         :class="paymentMethodPillClass('dinheiro')"
                         title="Dinheiro"
-                        x-html="icon('dinheiro') + ' R$ ' + p.prices.dinheiro.toFixed(2)"
+                        x-html="icon('dinheiro', 13) + ' R$ ' + p.prices.dinheiro.toFixed(2)"
                       ></span>
                     </template>
                     <template x-if="!p.soldByWeight">
@@ -233,7 +233,7 @@
                         class="text-xs px-2 py-1 rounded-full"
                         :class="paymentMethodPillClass('pix')"
                         title="Pix"
-                        x-html="icon('pix') + ' Pix R$ ' + p.prices.pix.toFixed(2)"
+                        x-html="icon('pix', 13) + ' Pix R$ ' + p.prices.pix.toFixed(2)"
                       ></span>
                     </template>
                     <template x-if="!p.soldByWeight">
@@ -241,7 +241,7 @@
                         class="text-xs px-2 py-1 rounded-full"
                         :class="paymentMethodPillClass('cartao')"
                         title="Cartão"
-                        x-html="icon('cartao') + ' R$ ' + p.prices.cartao.toFixed(2)"
+                        x-html="icon('cartao', 13) + ' R$ ' + p.prices.cartao.toFixed(2)"
                       ></span>
                     </template>
                   </div>
