@@ -8,9 +8,23 @@ celular de quem usa (IndexedDB). Por isso, distribuir pra um cliente novo
 (HTTPS). Não dá pra testar isso abrindo o app pelo IP local do computador
 no celular — precisa ser pelo link publicado.
 
+**Hospedagem: GitHub Pages** (não Netlify). Testamos o Netlify antes e ele
+injeta automaticamente um selinho/HUD ("Built on Netlify") em todo site do
+plano gratuito, visível pros clientes e sem como desligar sem plano pago.
+GitHub Pages não tem nada parecido — nunca mostra marca nenhuma pro
+visitante.
+
 ## 1. Publicar este repositório (uma vez)
 
 1. Criar um repositório no GitHub e dar `git push` neste projeto pra lá.
+   **O repositório precisa ser público** — no plano gratuito do GitHub, o
+   GitHub Pages só funciona em repositório público (repositório privado
+   exige o plano pago GitHub Pro). Se o repositório já existir como
+   privado: **Settings → General → Danger Zone → Change repository
+   visibility → Change to public** (confirma digitando o nome do
+   repositório). Isso expõe o código-fonte pra qualquer pessoa — não tem
+   segredo/senha no código, só configuração de negócio, mas a decisão é
+   sua.
 2. No repositório, ir em **Settings → Pages** → Source: `Deploy from a
    branch` → branch `main`, pasta `/ (root)` → Save. Em alguns minutos o
    GitHub dá um link tipo `https://<usuario>.github.io/<repo>/`.
@@ -20,10 +34,16 @@ no celular — precisa ser pelo link publicado.
 Esse link já serve pra você instalar no seu próprio celular: abre no
 Chrome Android e usa **⋮ → Adicionar à tela inicial**.
 
+Depois de instalado, o app se atualiza sozinho (o service worker checa
+por versão nova toda vez que o app volta pro primeiro plano) — não
+precisa mais remover e reinstalar a cada `git push` novo.
+
 ## 2. Criar a cópia de um cliente novo
 
 1. Na página do repositório modelo no GitHub, clicar **Use this template**
    → **Create a new repository** → dar um nome (ex: `pedidos-agua-joao`).
+   Na tela de criação, deixar marcado **Public** (mesmo motivo do passo 1:
+   GitHub Pages grátis não funciona em repositório privado).
 2. Clonar esse repositório novo na sua máquina.
 3. Editar `config.js`:
    ```js
