@@ -514,6 +514,10 @@ document.addEventListener('alpine:init', () => {
       await this.refreshOrders();
     },
 
+    toggleOrderMenu(orderId) {
+      this.openOrderMenuId = this.openOrderMenuId === orderId ? null : orderId;
+    },
+
     async deleteOrder(order) {
       this.openOrderMenuId = null;
       if (!confirm('Excluir este pedido definitivamente? Essa ação não pode ser desfeita.')) {

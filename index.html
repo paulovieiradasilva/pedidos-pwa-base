@@ -715,9 +715,10 @@
                           type="button"
                           class="text-gray-400 w-9 h-9 flex items-center justify-center -mr-1.5"
                           aria-label="Mais opções"
-                          @click="openOrderMenuId = openOrderMenuId === o.id ? null : o.id"
-                          x-html="icon('moreVertical', 18)"
-                        ></button>
+                          @click.stop="toggleOrderMenu(o.id)"
+                        >
+                          <span class="pointer-events-none" x-html="icon('moreVertical', 18)"></span>
+                        </button>
                         <template x-if="openOrderMenuId === o.id">
                           <div
                             class="absolute right-0 mt-1 bg-white border rounded-lg shadow-md z-20 overflow-hidden"
@@ -728,7 +729,7 @@
                               class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 whitespace-nowrap"
                               @click="deleteOrder(o)"
                             >
-                              <span x-html="icon('trash', 16)"></span>
+                              <span class="pointer-events-none" x-html="icon('trash', 16)"></span>
                               Excluir definitivamente
                             </button>
                           </div>
@@ -840,7 +841,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./service-worker.js?v=19")
+          .register("./service-worker.js?v=20")
           .then((reg) => {
             reg.update();
             document.addEventListener("visibilitychange", () => {
