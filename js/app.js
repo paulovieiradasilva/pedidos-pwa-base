@@ -423,6 +423,11 @@ document.addEventListener('alpine:init', () => {
       this.selectedOrderIds = [];
     },
 
+    formatDateDisplay(isoDate) {
+      const [y, m, d] = isoDate.split('-');
+      return `${d}/${m}/${y}`;
+    },
+
     async shiftDate(deltaDays) {
       const [y, m, d] = this.selectedDate.split('-').map(Number);
       const date = new Date(y, m - 1, d);

@@ -26,17 +26,6 @@
       select::-ms-expand {
         display: none;
       }
-      input[type="date"]::-webkit-calendar-picker-indicator {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        background: transparent;
-        color: transparent;
-        cursor: pointer;
-      }
     </style>
   </head>
 
@@ -574,9 +563,13 @@
                 x-html="icon('chevronLeft')"
               ></button>
               <div class="relative flex-1">
+                <div
+                  class="border rounded-lg p-2 pr-9 w-full bg-white"
+                  x-text="formatDateDisplay(selectedDate)"
+                ></div>
                 <input
                   type="date"
-                  class="border rounded-lg p-2 pr-9 w-full"
+                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                   x-model="selectedDate"
                   @change="refreshOrders()"
                 />
@@ -821,7 +814,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./service-worker.js?v=16")
+          .register("./service-worker.js?v=17")
           .then((reg) => {
             reg.update();
             document.addEventListener("visibilitychange", () => {
