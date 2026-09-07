@@ -308,9 +308,19 @@
             >
               <div class="flex items-center gap-1.5 mb-3">
                 <span class="text-blue-600" x-html="icon('person')"></span>
-                <span class="text-xs font-semibold text-blue-600 uppercase tracking-wide">Cliente</span>
+                <span
+                  class="text-xs font-semibold text-blue-600 uppercase tracking-wide"
+                  >Cliente</span
+                >
               </div>
-              <div class="relative mb-1">
+              <template x-if="customerMatchStatus">
+                <span
+                  class="inline-block text-xs px-2 py-0.5 rounded-full mb-2"
+                  :class="customerMatchStatus === 'existing' ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'"
+                  x-text="customerMatchStatus === 'existing' ? 'Cliente existente' : 'Cliente novo'"
+                ></span>
+              </template>
+              <div class="relative mb-3">
                 <input
                   type="tel"
                   inputmode="numeric"
@@ -322,7 +332,7 @@
                 />
                 <template x-if="phoneSuggestions.length > 0">
                   <ul
-                    class="absolute left-0 right-0 bg-white border rounded-xl shadow-md mt-1 z-10 overflow-hidden"
+                    class="absolute left-0 right-0 bg-white border rounded-xl shadow-md mt-1 z-10 max-h-56 overflow-y-auto"
                   >
                     <template x-for="c in phoneSuggestions" :key="c.phone">
                       <li
@@ -342,18 +352,33 @@
                   </ul>
                 </template>
               </div>
-              <p
-                class="text-xs text-gray-600 mb-3 flex items-center gap-1"
-                x-html="address ? icon('location') + ' ' + address : 'Cliente novo — informe o endereço abaixo'"
-              ></p>
-              <template x-if="!address">
+              <div class="relative mb-3">
                 <input
                   type="text"
                   placeholder="Endereço"
-                  class="border rounded-lg p-2 w-full mb-3"
-                  x-model="newAddress"
+                  class="border rounded-lg p-2 w-full"
+                  :value="address"
+                  @input="onAddressInput($event.target.value)"
                 />
-              </template>
+                <template x-if="addressSuggestions.length > 0">
+                  <ul
+                    class="absolute left-0 right-0 bg-white border rounded-xl shadow-md mt-1 z-10 max-h-56 overflow-y-auto"
+                  >
+                    <template x-for="c in addressSuggestions" :key="c.phone">
+                      <li
+                        class="p-2 text-sm border-b last:border-b-0"
+                        @mousedown.prevent="selectAddressSuggestion(c)"
+                      >
+                        <span class="font-medium" x-text="c.address"></span>
+                        <span
+                          class="text-gray-600"
+                          x-text="' · ' + formatPhoneMask(c.phone)"
+                        ></span>
+                      </li>
+                    </template>
+                  </ul>
+                </template>
+              </div>
             </div>
 
             <div
@@ -361,7 +386,10 @@
             >
               <div class="flex items-center gap-1.5 mb-3">
                 <span class="text-blue-600" x-html="icon('package')"></span>
-                <span class="text-xs font-semibold text-blue-600 uppercase tracking-wide">Adicionar produto</span>
+                <span
+                  class="text-xs font-semibold text-blue-600 uppercase tracking-wide"
+                  >Adicionar produto</span
+                >
               </div>
               <div class="relative mb-3 border rounded-lg overflow-hidden">
                 <select
@@ -370,7 +398,10 @@
                 >
                   <option value="" disabled>Selecione um produto</option>
                   <template x-for="p in activeProducts" :key="p.id">
-                    <option :value="p.id" x-text="productDisplayName(p)"></option>
+                    <option
+                      :value="p.id"
+                      x-text="productDisplayName(p)"
+                    ></option>
                   </template>
                 </select>
                 <span
@@ -416,24 +447,13 @@
                 </div>
               </template>
 
-              <button
-                type="button"
-                class="border border-gray-300 text-gray-700 bg-white p-2 w-full rounded-lg text-sm font-medium"
-                x-html="editingCartItemIndex !== null ? 'Atualizar item' : icon('add') + ' Adicionar item'"
-                @click="addCartItem()"
-              ></button>
-            </div>
-
-            <div
-              class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4"
-            >
-              <h2 class="font-medium text-sm mb-2">Itens do pedido</h2>
+              <h2 class="font-medium text-sm mb-2 mt-1">Itens do pedido</h2>
               <template x-if="cartItems.length === 0">
-                <p class="text-sm text-gray-600">
+                <p class="text-sm text-gray-600 mb-3">
                   Nenhum item adicionado ainda.
                 </p>
               </template>
-              <div class="flex flex-col gap-1">
+              <div class="flex flex-col gap-1 mb-3">
                 <template x-for="(item, index) in cartItems" :key="index">
                   <div
                     class="flex justify-between items-center text-sm border-b last:border-b-0 py-1"
@@ -461,12 +481,19 @@
                   </div>
                 </template>
               </div>
+
+              <button
+                type="button"
+                class="border border-gray-300 text-gray-700 bg-white p-2 w-full rounded-lg text-sm font-medium"
+                x-html="editingCartItemIndex !== null ? 'Atualizar item' : icon('add') + ' Adicionar item'"
+                @click="addCartItem()"
+              ></button>
             </div>
 
             <div
               class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4"
             >
-              <label class="block mb-1 text-sm">Pagamento</label>
+              <label class="block mb-2 text-sm">Pagamento</label>
               <div class="flex gap-2">
                 <button
                   type="button"
@@ -499,12 +526,22 @@
                     class="border rounded-lg p-2 w-full"
                     x-model.number="changeFor"
                   />
+                  <template
+                    x-if="changeFor != null && changeFor >= orderTotal()"
+                  >
+                    <p class="text-sm text-gray-700 mt-1 flex justify-between">
+                      <span>Troco</span>
+                      <span
+                        x-text="'R$ ' + changeAmountLive().toFixed(2)"
+                      ></span>
+                    </p>
+                  </template>
                 </div>
               </template>
             </div>
 
             <div class="flex justify-between items-baseline mb-3">
-              <span class="text-sm text-gray-600">Total</span>
+              <span class="text-lg text-gray-600">Total</span>
               <span
                 class="text-2xl font-bold"
                 x-text="'R$ ' + orderTotal().toFixed(2)"
@@ -525,6 +562,13 @@
         <template x-if="!showOrderForm">
           <div>
             <div class="flex items-center gap-2 mb-3">
+              <button
+                type="button"
+                class="border rounded-lg p-2 text-gray-600 shrink-0"
+                aria-label="Dia anterior"
+                @click="shiftDate(-1)"
+                x-html="icon('chevronLeft')"
+              ></button>
               <div class="relative flex-1">
                 <input
                   type="date"
@@ -537,6 +581,13 @@
                   x-html="icon('calendar')"
                 ></span>
               </div>
+              <button
+                type="button"
+                class="border rounded-lg p-2 text-gray-600 shrink-0"
+                aria-label="Próximo dia"
+                @click="shiftDate(1)"
+                x-html="icon('chevronRight')"
+              ></button>
               <span
                 class="text-sm text-gray-600 whitespace-nowrap"
                 x-text="filteredOrders().length + ' pedido(s)'"
@@ -676,12 +727,22 @@
                   <div
                     class="flex justify-between items-center mt-1.5 pt-1.5 border-t border-gray-100"
                   >
-                    <span
-                      class="text-xs font-medium"
-                      :class="paymentMethodTextClass(o.paymentMethod)"
-                      :title="paymentMethodLabel(o.paymentMethod)"
-                      x-html="icon(o.paymentMethod, 18)"
-                    ></span>
+                    <span class="flex items-center gap-1.5">
+                      <span
+                        class="text-xs font-medium"
+                        :class="paymentMethodTextClass(o.paymentMethod)"
+                        :title="paymentMethodLabel(o.paymentMethod)"
+                        x-html="icon(o.paymentMethod, 18)"
+                      ></span>
+                      <template
+                        x-if="o.paymentMethod === 'dinheiro' && o.changeAmount > 0"
+                      >
+                        <span
+                          class="text-xs text-gray-500"
+                          x-text="'Troco: R$ ' + o.changeAmount.toFixed(2)"
+                        ></span>
+                      </template>
+                    </span>
                     <div class="flex gap-3 text-xs font-medium">
                       <template
                         x-if="orderStatusTab === 'pendente' || orderStatusTab === 'impresso'"
@@ -742,7 +803,10 @@
       x-transition:leave-start="opacity-100 translate-y-0"
       x-transition:leave-end="opacity-0 -translate-y-2"
       class="fixed left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-50"
-      style="display: none; top: max(1rem, calc(env(safe-area-inset-top) + 0.5rem))"
+      style="
+        display: none;
+        top: max(1rem, calc(env(safe-area-inset-top) + 0.5rem));
+      "
     >
       <div
         class="bg-gray-900 text-white text-sm rounded-lg shadow-lg px-4 py-3"
@@ -752,12 +816,14 @@
 
     <script>
       if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("./service-worker.js?v=7").then((reg) => {
-          reg.update();
-          document.addEventListener("visibilitychange", () => {
-            if (document.visibilityState === "visible") reg.update();
+        navigator.serviceWorker
+          .register("./service-worker.js?v=12")
+          .then((reg) => {
+            reg.update();
+            document.addEventListener("visibilitychange", () => {
+              if (document.visibilityState === "visible") reg.update();
+            });
           });
-        });
 
         let reloadedForUpdate = false;
         navigator.serviceWorker.addEventListener("controllerchange", () => {

@@ -9,11 +9,12 @@ document.addEventListener('alpine:init', () => {
 
     phone: '',
     address: '',
-    newAddress: '',
     products: [],
     activeProducts: [],
     customers: [],
     phoneSuggestions: [],
+    addressSuggestions: [],
+    customerMatchStatus: null,
     selectedProductId: '',
     qty: null,
     weightGrams: null,
@@ -92,15 +93,41 @@ document.addEventListener('alpine:init', () => {
       this.phone = this.formatPhoneMask(value);
       const digits = this.phoneDigits();
       this.phoneSuggestions = digits.length >= 3
-        ? this.customers.filter(c => c.phone.includes(digits)).slice(0, 8)
+        ? this.customers.filter(c => c.phone.includes(digits))
         : [];
     },
 
-    selectPhoneSuggestion(customer) {
+    normalizeSearchText(value) {
+      return value
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .trim()
+        .toLowerCase();
+    },
+
+    onAddressInput(value) {
+      this.address = value;
+      const query = this.normalizeSearchText(value);
+      this.addressSuggestions = query.length >= 3
+        ? this.customers.filter(c => this.normalizeSearchText(c.address ?? '').includes(query))
+        : [];
+    },
+
+    applyCustomerSelection(customer) {
       this.phone = this.formatPhoneMask(customer.phone);
       this.address = customer.address;
+      this.customerMatchStatus = 'existing';
       this.phoneSuggestions = [];
+      this.addressSuggestions = [];
       if (document.activeElement) document.activeElement.blur();
+    },
+
+    selectPhoneSuggestion(customer) {
+      this.applyCustomerSelection(customer);
+    },
+
+    selectAddressSuggestion(customer) {
+      this.applyCustomerSelection(customer);
     },
 
     phoneDigits() {
@@ -108,8 +135,18 @@ document.addEventListener('alpine:init', () => {
     },
 
     async lookupCustomer() {
-      const customer = await findCustomerByPhone(this.phoneDigits());
-      this.address = customer ? customer.address : '';
+      const digits = this.phoneDigits();
+      if (digits.length !== 10 && digits.length !== 11) {
+        this.customerMatchStatus = null;
+        return;
+      }
+      const customer = await findCustomerByPhone(digits);
+      if (customer) {
+        this.address = customer.address;
+        this.customerMatchStatus = 'existing';
+      } else {
+        this.customerMatchStatus = 'new';
+      }
     },
 
     selectedNewOrderProduct() {
@@ -213,10 +250,13 @@ document.addEventListener('alpine:init', () => {
       return this.cartItems.reduce((sum, item) => sum + this.cartItemLineTotal(item), 0);
     },
 
+    changeAmountLive() {
+      return Math.max((this.changeFor ?? 0) - this.orderTotal(), 0);
+    },
+
     resetForm() {
       this.phone = '';
       this.address = '';
-      this.newAddress = '';
       this.qty = null;
       this.weightGrams = null;
       this.weightManualTotal = null;
@@ -227,6 +267,8 @@ document.addEventListener('alpine:init', () => {
       this.changeFor = null;
       this.selectedProductId = '';
       this.phoneSuggestions = [];
+      this.addressSuggestions = [];
+      this.customerMatchStatus = null;
     },
 
     async openNewOrderForm() {
@@ -241,7 +283,6 @@ document.addEventListener('alpine:init', () => {
       this.editingOrderId = order.id;
       this.phone = this.formatPhoneMask(order.customerPhone);
       this.address = order.address ?? '';
-      this.newAddress = '';
       this.paymentMethod = order.paymentMethod;
       this.changeFor = order.changeFor ?? null;
       this.cartItems = order.items.map(item => ({
@@ -255,6 +296,8 @@ document.addEventListener('alpine:init', () => {
       this.weightTotalTouched = false;
       this.editingCartItemIndex = null;
       this.phoneSuggestions = [];
+      this.addressSuggestions = [];
+      this.customerMatchStatus = null;
       this.customers = await listCustomers();
       this.activeProducts = await listActiveProducts();
       this.showOrderForm = true;
@@ -297,14 +340,11 @@ document.addEventListener('alpine:init', () => {
         }
       }
 
-      if (!this.address && this.newAddress) {
-        await saveCustomer(phoneDigits, this.newAddress);
-        this.address = this.newAddress;
-      }
       if (!this.address) {
         this.showToast('Informe o endereço antes de gravar.');
         return;
       }
+      await saveCustomer(phoneDigits, this.address);
 
       const orderInput = {
         customerPhone: phoneDigits,
@@ -332,6 +372,14 @@ document.addEventListener('alpine:init', () => {
       this.todayOrders = await listOrdersForDay(this.selectedDate);
       this.visibleOrderCount = 15;
       this.selectedOrderIds = [];
+    },
+
+    async shiftDate(deltaDays) {
+      const [y, m, d] = this.selectedDate.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      date.setDate(date.getDate() + deltaDays);
+      this.selectedDate = localDateString(date);
+      await this.refreshOrders();
     },
 
     filteredOrders() {
@@ -439,6 +487,8 @@ document.addEventListener('alpine:init', () => {
         cartao: { strokeWidth: 2, body: '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>' },
         pix: { strokeWidth: 2, body: '<rect x="4" y="4" width="16" height="16" rx="5" transform="rotate(45 12 12)"/>' },
         chevronDown: { strokeWidth: 2, body: '<path d="m6 9 6 6 6-6"/>' },
+        chevronLeft: { strokeWidth: 2, body: '<path d="m15 18-6-6 6-6"/>' },
+        chevronRight: { strokeWidth: 2, body: '<path d="m9 18 6-6-6-6"/>' },
         calendar: { strokeWidth: 2, body: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>' },
         person: { strokeWidth: 2, body: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
         package: { strokeWidth: 2, body: '<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/>' },
