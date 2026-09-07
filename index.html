@@ -343,7 +343,10 @@
                 </template>
               </div>
               <template x-if="phoneError">
-                <p class="text-xs text-red-600 -mt-2 mb-3" x-text="phoneError"></p>
+                <p
+                  class="text-xs text-red-600 -mt-2 mb-3"
+                  x-text="phoneError"
+                ></p>
               </template>
               <div class="relative mb-3">
                 <input
@@ -554,42 +557,73 @@
 
         <template x-if="!showOrderForm">
           <div>
-            <div class="flex items-center gap-2 mb-3">
-              <button
-                type="button"
-                class="border rounded-lg p-2 text-gray-600 shrink-0"
-                aria-label="Dia anterior"
-                @click="shiftDate(-1)"
-                x-html="icon('chevronLeft')"
-              ></button>
-              <div class="relative flex-1">
-                <div
-                  class="border rounded-lg p-2 pr-9 w-full bg-white"
-                  x-text="formatDateDisplay(selectedDate)"
-                ></div>
-                <input
-                  type="date"
-                  class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  x-model="selectedDate"
-                  @change="refreshOrders()"
-                />
+            <div class="relative mb-3">
+              <input
+                type="text"
+                placeholder="Buscar por telefone ou endereço"
+                class="border rounded-lg p-2 pr-9 w-full"
+                :value="orderSearchQuery"
+                @input="onOrderSearchInput($event.target.value)"
+              />
+              <template x-if="orderSearchQuery.trim()">
+                <button
+                  type="button"
+                  class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
+                  aria-label="Limpar busca"
+                  @click="clearOrderSearch()"
+                >
+                  <span
+                    class="pointer-events-none"
+                    x-html="icon('close', 16)"
+                  ></span>
+                </button>
+              </template>
+            </div>
+
+            <template x-if="!orderSearchQuery.trim()">
+              <div class="flex items-center gap-2 mb-3">
+                <button
+                  type="button"
+                  class="border rounded-lg p-2 text-gray-600 shrink-0"
+                  aria-label="Dia anterior"
+                  @click="shiftDate(-1)"
+                  x-html="icon('chevronLeft')"
+                ></button>
+                <div class="relative flex-1">
+                  <div
+                    class="border rounded-lg p-2 pr-9 w-full bg-white"
+                    x-text="formatDateDisplay(selectedDate)"
+                  ></div>
+                  <input
+                    type="date"
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                    x-model="selectedDate"
+                    @change="refreshOrders()"
+                  />
+                  <span
+                    class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
+                    x-html="icon('calendar')"
+                  ></span>
+                </div>
+                <button
+                  type="button"
+                  class="border rounded-lg p-2 text-gray-600 shrink-0"
+                  aria-label="Próximo dia"
+                  @click="shiftDate(1)"
+                  x-html="icon('chevronRight')"
+                ></button>
                 <span
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
-                  x-html="icon('calendar')"
+                  class="text-sm text-gray-600 whitespace-nowrap"
+                  x-text="filteredOrders().length + ' pedido(s)'"
                 ></span>
               </div>
-              <button
-                type="button"
-                class="border rounded-lg p-2 text-gray-600 shrink-0"
-                aria-label="Próximo dia"
-                @click="shiftDate(1)"
-                x-html="icon('chevronRight')"
-              ></button>
-              <span
-                class="text-sm text-gray-600 whitespace-nowrap"
-                x-text="filteredOrders().length + ' pedido(s)'"
-              ></span>
-            </div>
+            </template>
+            <template x-if="orderSearchQuery.trim()">
+              <p
+                class="text-sm text-gray-600 mb-3"
+                x-text="orderSearchResults.length + ' resultado(s) para \'' + orderSearchQuery.trim() + '\''"
+              ></p>
+            </template>
 
             <div class="flex gap-3 mb-3 border-b border-gray-200">
               <button
@@ -674,11 +708,14 @@
               </label>
             </div>
 
-            <template x-if="todayOrders.length === 0">
-              <p class="text-sm text-gray-600">Nenhum pedido nesse dia.</p>
+            <template x-if="currentOrders().length === 0">
+              <p
+                class="text-sm text-gray-600"
+                x-text="orderSearchQuery.trim() ? 'Nenhum pedido encontrado para essa busca.' : 'Nenhum pedido nesse dia.'"
+              ></p>
             </template>
             <template
-              x-if="todayOrders.length > 0 && filteredOrders().length === 0"
+              x-if="currentOrders().length > 0 && filteredOrders().length === 0"
             >
               <p class="text-sm text-gray-600">
                 Nenhum pedido nessa aba com esse filtro.
@@ -717,7 +754,10 @@
                           aria-label="Mais opções"
                           @click.stop="toggleOrderMenu(o.id)"
                         >
-                          <span class="pointer-events-none" x-html="icon('moreVertical', 18)"></span>
+                          <span
+                            class="pointer-events-none"
+                            x-html="icon('moreVertical', 18)"
+                          ></span>
                         </button>
                         <template x-if="openOrderMenuId === o.id">
                           <div
@@ -729,7 +769,10 @@
                               class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 whitespace-nowrap"
                               @click="deleteOrder(o)"
                             >
-                              <span class="pointer-events-none" x-html="icon('trash', 16)"></span>
+                              <span
+                                class="pointer-events-none"
+                                x-html="icon('trash', 16)"
+                              ></span>
                               Excluir definitivamente
                             </button>
                           </div>
@@ -737,6 +780,10 @@
                       </span>
                     </span>
                   </div>
+                  <p
+                    class="text-xs py-1 text-gray-500"
+                    x-text="formatOrderDate(o)"
+                  ></p>
                   <template x-if="o.address">
                     <p class="text-xs text-gray-600 flex items-center gap-1">
                       <span class="shrink-0" x-html="icon('location')"></span>
@@ -841,7 +888,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./service-worker.js?v=20")
+          .register("./service-worker.js?v=21")
           .then((reg) => {
             reg.update();
             document.addEventListener("visibilitychange", () => {

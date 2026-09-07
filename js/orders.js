@@ -87,3 +87,8 @@ export async function updateOrderStatus(id, status) {
 export async function removeOrder(id) {
   await remove('orders', id);
 }
+
+export async function listAllOrders() {
+  const all = await getAll('orders');
+  return all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}

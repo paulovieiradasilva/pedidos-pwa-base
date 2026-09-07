@@ -1,6 +1,6 @@
 import { findCustomerByPhone, saveCustomer, listCustomers } from './customers.js';
 import { seedProductsIfEmpty, listProducts, listActiveProducts, saveProduct, setProductActive } from './products.js';
-import { createOrder, updateOrder, listOrdersForDay, localDateString, updateOrderStatus, removeOrder } from './orders.js';
+import { createOrder, updateOrder, listOrdersForDay, listAllOrders, localDateString, updateOrderStatus, removeOrder } from './orders.js';
 import { buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
 
 const VALID_DDDS = new Set([
@@ -67,6 +67,8 @@ document.addEventListener('alpine:init', () => {
     showOrderForm: false,
     todayOrders: [],
     visibleOrderCount: 15,
+    orderSearchQuery: '',
+    orderSearchResults: [],
     selectedDate: localDateString(new Date()),
     paymentFilter: { dinheiro: true, pix: true, cartao: true },
     orderStatusTab: 'pendente',
@@ -424,13 +426,54 @@ document.addEventListener('alpine:init', () => {
 
     async refreshOrders() {
       this.todayOrders = await listOrdersForDay(this.selectedDate);
+      if (this.orderSearchQuery.trim()) {
+        await this.searchOrders();
+      }
       this.visibleOrderCount = 15;
       this.selectedOrderIds = [];
+    },
+
+    onOrderSearchInput(value) {
+      this.orderSearchQuery = value;
+      this.searchOrders();
+    },
+
+    async searchOrders() {
+      const query = this.orderSearchQuery.trim();
+      if (!query) {
+        this.orderSearchResults = [];
+        this.visibleOrderCount = 15;
+        return;
+      }
+      const normalizedQuery = this.normalizeSearchText(query);
+      const digitsQuery = query.replace(/\D/g, '');
+      const all = await listAllOrders();
+      this.orderSearchResults = all.filter(o => {
+        const addressMatch = this.normalizeSearchText(o.address ?? '').includes(normalizedQuery);
+        const phoneMatch = digitsQuery.length > 0 && (o.customerPhone ?? '').includes(digitsQuery);
+        return addressMatch || phoneMatch;
+      });
+      this.visibleOrderCount = 15;
+      this.selectedOrderIds = [];
+    },
+
+    clearOrderSearch() {
+      this.orderSearchQuery = '';
+      this.orderSearchResults = [];
+      this.visibleOrderCount = 15;
+    },
+
+    currentOrders() {
+      return this.orderSearchQuery.trim() ? this.orderSearchResults : this.todayOrders;
     },
 
     formatDateDisplay(isoDate) {
       const [y, m, d] = isoDate.split('-');
       return `${d}/${m}/${y}`;
+    },
+
+    formatOrderDate(order) {
+      return new Date(order.createdAt).toLocaleDateString('pt-BR');
     },
 
     async shiftDate(deltaDays) {
@@ -442,7 +485,7 @@ document.addEventListener('alpine:init', () => {
     },
 
     filteredOrders() {
-      return this.todayOrders
+      return this.currentOrders()
         .filter(o => o.status === this.orderStatusTab)
         .filter(o => this.paymentFilter[o.paymentMethod]);
     },
@@ -475,7 +518,7 @@ document.addEventListener('alpine:init', () => {
       let failed = 0;
 
       for (const id of ids) {
-        const order = this.todayOrders.find(o => o.id === id);
+        const order = this.currentOrders().find(o => o.id === id);
         if (!order) continue;
         try {
           const customer = { phone: order.customerPhone, address: order.address };
