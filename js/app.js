@@ -3,6 +3,28 @@ import { seedProductsIfEmpty, listProducts, listActiveProducts, saveProduct, set
 import { createOrder, updateOrder, listOrdersForDay, localDateString, updateOrderStatus } from './orders.js';
 import { buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
 
+const VALID_DDDS = new Set([
+  '11', '12', '13', '14', '15', '16', '17', '18', '19',
+  '21', '22', '24',
+  '27', '28',
+  '31', '32', '33', '34', '35', '37', '38',
+  '41', '42', '43', '44', '45', '46', '47', '48', '49',
+  '51', '53', '54', '55',
+  '61', '62', '63', '64', '65', '66', '67', '68', '69',
+  '71', '73', '74', '75', '77', '79',
+  '81', '82', '83', '84', '85', '86', '87', '88', '89',
+  '91', '92', '93', '94', '95', '96', '97', '98', '99'
+]);
+
+function isValidBrazilianPhone(digits) {
+  if (digits.length !== 10 && digits.length !== 11) return false;
+  const ddd = digits.slice(0, 2);
+  if (!VALID_DDDS.has(ddd)) return false;
+  const firstNumberDigit = digits[2];
+  if (digits.length === 11) return firstNumberDigit === '9';
+  return firstNumberDigit !== '0' && firstNumberDigit !== '1';
+}
+
 document.addEventListener('alpine:init', () => {
   Alpine.data('pedidosApp', () => ({
     currentView: 'pedidosDoDia',
@@ -15,6 +37,7 @@ document.addEventListener('alpine:init', () => {
     phoneSuggestions: [],
     addressSuggestions: [],
     customerMatchStatus: null,
+    phoneError: '',
     selectedProductId: '',
     qty: null,
     weightGrams: null,
@@ -89,8 +112,10 @@ document.addEventListener('alpine:init', () => {
       return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
     },
 
-    onPhoneInput(value) {
-      this.phone = this.formatPhoneMask(value);
+    onPhoneInput(event) {
+      this.phone = this.formatPhoneMask(event.target.value);
+      event.target.value = this.phone;
+      this.phoneError = '';
       const digits = this.phoneDigits();
       this.phoneSuggestions = digits.length >= 3
         ? this.customers.filter(c => c.phone.includes(digits))
@@ -138,8 +163,15 @@ document.addEventListener('alpine:init', () => {
       const digits = this.phoneDigits();
       if (digits.length !== 10 && digits.length !== 11) {
         this.customerMatchStatus = null;
+        this.phoneError = '';
         return;
       }
+      if (!isValidBrazilianPhone(digits)) {
+        this.customerMatchStatus = null;
+        this.phoneError = 'Telefone inválido — confira o DDD e o número.';
+        return;
+      }
+      this.phoneError = '';
       const customer = await findCustomerByPhone(digits);
       if (customer) {
         this.address = customer.address;
@@ -269,6 +301,7 @@ document.addEventListener('alpine:init', () => {
       this.phoneSuggestions = [];
       this.addressSuggestions = [];
       this.customerMatchStatus = null;
+      this.phoneError = '';
     },
 
     async openNewOrderForm() {
@@ -298,6 +331,7 @@ document.addEventListener('alpine:init', () => {
       this.phoneSuggestions = [];
       this.addressSuggestions = [];
       this.customerMatchStatus = null;
+      this.phoneError = '';
       this.customers = await listCustomers();
       this.activeProducts = await listActiveProducts();
       this.showOrderForm = true;
@@ -311,8 +345,9 @@ document.addEventListener('alpine:init', () => {
 
     async saveOrder() {
       const phoneDigits = this.phoneDigits();
-      if (phoneDigits.length !== 10 && phoneDigits.length !== 11) {
-        this.showToast('Informe um telefone válido com DDD.');
+      if (!isValidBrazilianPhone(phoneDigits)) {
+        this.phoneError = 'Telefone inválido — confira o DDD e o número.';
+        this.showToast('Informe um telefone válido (DDD + número).');
         return;
       }
 

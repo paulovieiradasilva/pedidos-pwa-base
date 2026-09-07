@@ -324,10 +324,11 @@
                 <input
                   type="tel"
                   inputmode="numeric"
+                  maxlength="15"
                   placeholder="(11) 99999-8888"
                   class="border rounded-lg p-2 w-full"
                   :value="phone"
-                  @input="onPhoneInput($event.target.value)"
+                  @input="onPhoneInput($event)"
                   @blur="lookupCustomer()"
                 />
                 <template x-if="phoneSuggestions.length > 0">
@@ -352,6 +353,9 @@
                   </ul>
                 </template>
               </div>
+              <template x-if="phoneError">
+                <p class="text-xs text-red-600 -mt-2 mb-3" x-text="phoneError"></p>
+              </template>
               <div class="relative mb-3">
                 <input
                   type="text"
@@ -817,7 +821,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./service-worker.js?v=12")
+          .register("./service-worker.js?v=15")
           .then((reg) => {
             reg.update();
             document.addEventListener("visibilitychange", () => {
