@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pedidos-cache-v17';
+const CACHE_NAME = 'pedidos-cache-v19';
 const ASSETS = [
   './',
   './index.html',

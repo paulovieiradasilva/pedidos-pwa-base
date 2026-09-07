@@ -1,6 +1,6 @@
 import { findCustomerByPhone, saveCustomer, listCustomers } from './customers.js';
 import { seedProductsIfEmpty, listProducts, listActiveProducts, saveProduct, setProductActive } from './products.js';
-import { createOrder, updateOrder, listOrdersForDay, localDateString, updateOrderStatus } from './orders.js';
+import { createOrder, updateOrder, listOrdersForDay, localDateString, updateOrderStatus, removeOrder } from './orders.js';
 import { buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
 
 const VALID_DDDS = new Set([
@@ -71,6 +71,7 @@ document.addEventListener('alpine:init', () => {
     paymentFilter: { dinheiro: true, pix: true, cartao: true },
     orderStatusTab: 'pendente',
     selectedOrderIds: [],
+    openOrderMenuId: null,
     printerCharacteristic: null,
 
     productForm: {
@@ -115,6 +116,10 @@ document.addEventListener('alpine:init', () => {
     setOrderStatusTab(tab) {
       this.orderStatusTab = tab;
       this.selectedOrderIds = [];
+    },
+
+    formatCurrency(value) {
+      return (value ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
 
     formatPhoneMask(value) {
@@ -509,6 +514,16 @@ document.addEventListener('alpine:init', () => {
       await this.refreshOrders();
     },
 
+    async deleteOrder(order) {
+      this.openOrderMenuId = null;
+      if (!confirm('Excluir este pedido definitivamente? Essa ação não pode ser desfeita.')) {
+        return;
+      }
+      await removeOrder(order.id);
+      await this.refreshOrders();
+      this.showToast('Pedido excluído.');
+    },
+
     productDisplayName(product) {
       return product.brand ? `${product.name} ${product.brand}` : product.name;
     },
@@ -543,6 +558,8 @@ document.addEventListener('alpine:init', () => {
         chevronDown: { strokeWidth: 2, body: '<path d="m6 9 6 6 6-6"/>' },
         chevronLeft: { strokeWidth: 2, body: '<path d="m15 18-6-6 6-6"/>' },
         chevronRight: { strokeWidth: 2, body: '<path d="m9 18 6-6-6-6"/>' },
+        moreVertical: { strokeWidth: 2, body: '<circle cx="12" cy="5" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.8" fill="currentColor" stroke="none"/>' },
+        trash: { strokeWidth: 2, body: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>' },
         calendar: { strokeWidth: 2, body: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>' },
         person: { strokeWidth: 2, body: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
         package: { strokeWidth: 2, body: '<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/>' },

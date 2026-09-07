@@ -239,7 +239,7 @@
                     <template x-if="p.soldByWeight">
                       <span
                         class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700"
-                        x-text="'R$ ' + p.pricePerKg.toFixed(2) + '/kg'"
+                        x-text="'R$ ' + formatCurrency(p.pricePerKg) + '/kg'"
                       ></span>
                     </template>
                     <template x-if="!p.soldByWeight">
@@ -247,7 +247,7 @@
                         class="text-xs px-2 py-1 rounded-full"
                         :class="paymentMethodPillClass('dinheiro')"
                         title="Dinheiro"
-                        x-html="icon('dinheiro', 13) + ' R$ ' + p.prices.dinheiro.toFixed(2)"
+                        x-html="icon('dinheiro', 13) + ' R$ ' + formatCurrency(p.prices.dinheiro)"
                       ></span>
                     </template>
                     <template x-if="!p.soldByWeight">
@@ -255,7 +255,7 @@
                         class="text-xs px-2 py-1 rounded-full"
                         :class="paymentMethodPillClass('pix')"
                         title="Pix"
-                        x-html="icon('pix', 13) + ' Pix R$ ' + p.prices.pix.toFixed(2)"
+                        x-html="icon('pix', 13) + ' Pix R$ ' + formatCurrency(p.prices.pix)"
                       ></span>
                     </template>
                     <template x-if="!p.soldByWeight">
@@ -263,7 +263,7 @@
                         class="text-xs px-2 py-1 rounded-full"
                         :class="paymentMethodPillClass('cartao')"
                         title="Cartão"
-                        x-html="icon('cartao', 13) + ' R$ ' + p.prices.cartao.toFixed(2)"
+                        x-html="icon('cartao', 13) + ' R$ ' + formatCurrency(p.prices.cartao)"
                       ></span>
                     </template>
                   </div>
@@ -460,7 +460,7 @@
                     <span class="flex items-center gap-2 shrink-0">
                       <template x-if="paymentMethod">
                         <span
-                          x-text="'R$ ' + cartItemLineTotal(item).toFixed(2)"
+                          x-text="'R$ ' + formatCurrency(cartItemLineTotal(item))"
                         ></span>
                       </template>
                       <button
@@ -525,7 +525,7 @@
                     <p class="text-sm text-gray-700 mt-1 flex justify-between">
                       <span>Troco</span>
                       <span
-                        x-text="'R$ ' + changeAmountLive().toFixed(2)"
+                        x-text="'R$ ' + formatCurrency(changeAmountLive())"
                       ></span>
                     </p>
                   </template>
@@ -537,7 +537,7 @@
               <span class="text-lg text-gray-600">Total</span>
               <span
                 class="text-2xl font-bold"
-                x-text="'R$ ' + orderTotal().toFixed(2)"
+                x-text="'R$ ' + formatCurrency(orderTotal())"
               ></span>
             </div>
 
@@ -705,10 +705,36 @@
                         x-text="new Date(o.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) + ' · ' + formatPhoneMask(o.customerPhone)"
                       ></span>
                     </span>
-                    <span
-                      class="text-base font-bold shrink-0"
-                      x-text="'R$ ' + o.total.toFixed(2)"
-                    ></span>
+                    <span class="flex items-center shrink-0">
+                      <span
+                        class="text-base font-bold"
+                        x-text="'R$ ' + formatCurrency(o.total)"
+                      ></span>
+                      <span class="relative">
+                        <button
+                          type="button"
+                          class="text-gray-400 w-9 h-9 flex items-center justify-center -mr-1.5"
+                          aria-label="Mais opções"
+                          @click="openOrderMenuId = openOrderMenuId === o.id ? null : o.id"
+                          x-html="icon('moreVertical', 18)"
+                        ></button>
+                        <template x-if="openOrderMenuId === o.id">
+                          <div
+                            class="absolute right-0 mt-1 bg-white border rounded-lg shadow-md z-20 overflow-hidden"
+                            @click.outside="openOrderMenuId = null"
+                          >
+                            <button
+                              type="button"
+                              class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 whitespace-nowrap"
+                              @click="deleteOrder(o)"
+                            >
+                              <span x-html="icon('trash', 16)"></span>
+                              Excluir definitivamente
+                            </button>
+                          </div>
+                        </template>
+                      </span>
+                    </span>
                   </div>
                   <template x-if="o.address">
                     <p class="text-xs text-gray-600 flex items-center gap-1">
@@ -736,7 +762,7 @@
                       >
                         <span
                           class="text-xs text-gray-500"
-                          x-text="'Troco: R$ ' + o.changeAmount.toFixed(2)"
+                          x-text="'Troco: R$ ' + formatCurrency(o.changeAmount)"
                         ></span>
                       </template>
                     </span>
@@ -814,7 +840,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./service-worker.js?v=17")
+          .register("./service-worker.js?v=19")
           .then((reg) => {
             reg.update();
             document.addEventListener("visibilitychange", () => {

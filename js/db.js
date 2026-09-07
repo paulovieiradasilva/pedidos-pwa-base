@@ -55,3 +55,13 @@ export async function getAll(storeName) {
     request.onerror = () => reject(request.error);
   });
 }
+
+export async function remove(storeName, key) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, 'readwrite');
+    tx.objectStore(storeName).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}

@@ -1,4 +1,4 @@
-import { getAll, get, put } from './db.js';
+import { getAll, get, put, remove } from './db.js';
 import { listProducts } from './products.js';
 
 export function localDateString(date = new Date()) {
@@ -82,4 +82,8 @@ export async function updateOrderStatus(id, status) {
   if (!order) return;
   order.status = status;
   await put('orders', order);
+}
+
+export async function removeOrder(id) {
+  await remove('orders', id);
 }
