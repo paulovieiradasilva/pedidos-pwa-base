@@ -25,6 +25,19 @@ function isValidBrazilianPhone(digits) {
   return firstNumberDigit !== '0' && firstNumberDigit !== '1';
 }
 
+const ADDRESS_LOWERCASE_WORDS = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
+
+function capitalizeAddress(text) {
+  return text
+    .trim()
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+    .replace(/\p{L}+/gu, (word, offset) => {
+      if (offset !== 0 && ADDRESS_LOWERCASE_WORDS.has(word)) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1);
+    });
+}
+
 document.addEventListener('alpine:init', () => {
   Alpine.data('pedidosApp', () => ({
     currentView: 'pedidosDoDia',
@@ -379,6 +392,7 @@ document.addEventListener('alpine:init', () => {
         this.showToast('Informe o endereço antes de gravar.');
         return;
       }
+      this.address = capitalizeAddress(this.address);
       await saveCustomer(phoneDigits, this.address);
 
       const orderInput = {
