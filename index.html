@@ -668,7 +668,7 @@
 
             <div class="flex items-center gap-2 mb-3 text-xs">
               <label
-                class="flex items-center gap-1 border rounded-full px-3 py-1 cursor-pointer"
+                class="flex items-center gap-1 border rounded-full h-8 px-3 cursor-pointer"
                 :class="paymentFilter.dinheiro ? 'border-green-200 bg-green-50 text-green-800' : 'border-gray-300 text-gray-500'"
                 title="Dinheiro"
               >
@@ -681,7 +681,7 @@
                 <span aria-hidden="true" x-html="icon('dinheiro', 18)"></span>
               </label>
               <label
-                class="flex items-center gap-1 border rounded-full px-3 py-1 cursor-pointer"
+                class="flex items-center gap-1 border rounded-full h-8 px-3 cursor-pointer"
                 :class="paymentFilter.pix ? 'border-blue-200 bg-blue-50 text-blue-800 font-medium' : 'border-gray-300 text-gray-500'"
                 title="Pix"
               >
@@ -694,7 +694,7 @@
                 <span x-html="icon('pix') + ' Pix'"></span>
               </label>
               <label
-                class="flex items-center gap-1 border rounded-full px-3 py-1 cursor-pointer"
+                class="flex items-center gap-1 border rounded-full h-8 px-3 cursor-pointer"
                 :class="paymentFilter.cartao ? 'border-purple-200 bg-purple-50 text-purple-800' : 'border-gray-300 text-gray-500'"
                 title="Cartão"
               >
@@ -707,21 +707,27 @@
                 <span aria-hidden="true" x-html="icon('cartao', 18)"></span>
               </label>
 
-              <select
-                class="border rounded-lg px-1.5 py-1 text-xs text-gray-600 bg-white ml-auto"
-                aria-label="Itens por página"
-                :value="orderPageSize"
-                @change="onOrderPageSizeChange($event.target.value)"
-              >
-                <option value="5">5</option>
-                <option value="10">10</option>
-                <option value="15">15</option>
-                <option value="30">30</option>
-                <option value="50">50</option>
-              </select>
+              <div class="relative ml-auto shrink-0">
+                <select
+                  class="appearance-none border border-gray-300 rounded-full h-8 pl-3 pr-6 text-xs text-gray-600 bg-white"
+                  aria-label="Itens por página"
+                  :value="orderPageSize"
+                  @change="onOrderPageSizeChange($event.target.value)"
+                >
+                  <option value="5">5</option>
+                  <option value="10">10</option>
+                  <option value="15">15</option>
+                  <option value="30">30</option>
+                  <option value="50">50</option>
+                </select>
+                <span
+                  class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-gray-400"
+                  x-html="icon('chevronDown', 12)"
+                ></span>
+              </div>
               <button
                 type="button"
-                class="border rounded-lg w-7 h-7 flex items-center justify-center text-gray-600 shrink-0"
+                class="border border-gray-300 rounded-full w-8 h-8 flex items-center justify-center text-gray-600 shrink-0"
                 :aria-label="orderSortDirection === 'desc' ? 'Mostrando mais recentes primeiro, tocar para inverter' : 'Mostrando mais antigos primeiro, tocar para inverter'"
                 @click="toggleOrderSort()"
               >
@@ -929,7 +935,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./service-worker.js?v=24")
+          .register("./service-worker.js?v=25")
           .then((reg) => {
             reg.update();
             document.addEventListener("visibilitychange", () => {
