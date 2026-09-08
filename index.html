@@ -666,7 +666,7 @@
               ></button>
             </template>
 
-            <div class="flex gap-2 mb-3 text-xs">
+            <div class="flex items-center gap-2 mb-3 text-xs">
               <label
                 class="flex items-center gap-1 border rounded-full px-3 py-1 cursor-pointer"
                 :class="paymentFilter.dinheiro ? 'border-green-200 bg-green-50 text-green-800' : 'border-gray-300 text-gray-500'"
@@ -706,6 +706,27 @@
                 />
                 <span aria-hidden="true" x-html="icon('cartao', 18)"></span>
               </label>
+
+              <select
+                class="border rounded-lg px-1.5 py-1 text-xs text-gray-600 bg-white ml-auto"
+                aria-label="Itens por página"
+                :value="orderPageSize"
+                @change="onOrderPageSizeChange($event.target.value)"
+              >
+                <option value="5">5</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+                <option value="30">30</option>
+                <option value="50">50</option>
+              </select>
+              <button
+                type="button"
+                class="border rounded-lg w-7 h-7 flex items-center justify-center text-gray-600 shrink-0"
+                :aria-label="orderSortDirection === 'desc' ? 'Mostrando mais recentes primeiro, tocar para inverter' : 'Mostrando mais antigos primeiro, tocar para inverter'"
+                @click="toggleOrderSort()"
+              >
+                <span class="pointer-events-none" x-html="icon('sort', 16)"></span>
+              </button>
             </div>
 
             <template x-if="currentOrders().length === 0">
@@ -747,7 +768,10 @@
                         class="text-base font-bold"
                         x-text="'R$ ' + formatCurrency(o.total)"
                       ></span>
-                      <span class="relative">
+                      <span
+                        class="relative"
+                        x-show="orderStatusTab === 'pendente' || orderStatusTab === 'impresso'"
+                      >
                         <button
                           type="button"
                           class="text-gray-400 w-9 h-9 flex items-center justify-center -mr-1.5"
@@ -853,13 +877,30 @@
               </template>
             </div>
 
-            <button
-              x-show="visibleOrderCount < filteredOrders().length"
-              class="mt-3 w-full p-2 border border-gray-300 text-gray-700 bg-white rounded-lg text-sm"
-              @click="showMoreOrders()"
-            >
-              Mostrar mais
-            </button>
+            <template x-if="totalOrderPages() > 1">
+              <div class="flex items-center justify-center gap-3 mt-3">
+                <button
+                  type="button"
+                  class="border rounded-lg p-2 text-gray-600 disabled:opacity-40"
+                  aria-label="Página anterior"
+                  :disabled="orderPage <= 1"
+                  @click="prevOrderPage()"
+                  x-html="icon('chevronLeft')"
+                ></button>
+                <span
+                  class="text-sm text-gray-600"
+                  x-text="'Página ' + orderPage + ' de ' + totalOrderPages()"
+                ></span>
+                <button
+                  type="button"
+                  class="border rounded-lg p-2 text-gray-600 disabled:opacity-40"
+                  aria-label="Próxima página"
+                  :disabled="orderPage >= totalOrderPages()"
+                  @click="nextOrderPage()"
+                  x-html="icon('chevronRight')"
+                ></button>
+              </div>
+            </template>
           </div>
         </template>
       </div>
@@ -888,7 +929,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./service-worker.js?v=21")
+          .register("./service-worker.js?v=24")
           .then((reg) => {
             reg.update();
             document.addEventListener("visibilitychange", () => {

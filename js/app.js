@@ -66,7 +66,9 @@ document.addEventListener('alpine:init', () => {
     toastTimer: null,
     showOrderForm: false,
     todayOrders: [],
-    visibleOrderCount: 15,
+    orderPage: 1,
+    orderPageSize: 15,
+    orderSortDirection: 'desc',
     orderSearchQuery: '',
     orderSearchResults: [],
     selectedDate: localDateString(new Date()),
@@ -118,6 +120,7 @@ document.addEventListener('alpine:init', () => {
     setOrderStatusTab(tab) {
       this.orderStatusTab = tab;
       this.selectedOrderIds = [];
+      this.orderPage = 1;
     },
 
     formatCurrency(value) {
@@ -429,7 +432,7 @@ document.addEventListener('alpine:init', () => {
       if (this.orderSearchQuery.trim()) {
         await this.searchOrders();
       }
-      this.visibleOrderCount = 15;
+      this.orderPage = 1;
       this.selectedOrderIds = [];
     },
 
@@ -442,7 +445,7 @@ document.addEventListener('alpine:init', () => {
       const query = this.orderSearchQuery.trim();
       if (!query) {
         this.orderSearchResults = [];
-        this.visibleOrderCount = 15;
+        this.orderPage = 1;
         return;
       }
       const normalizedQuery = this.normalizeSearchText(query);
@@ -453,14 +456,14 @@ document.addEventListener('alpine:init', () => {
         const phoneMatch = digitsQuery.length > 0 && (o.customerPhone ?? '').includes(digitsQuery);
         return addressMatch || phoneMatch;
       });
-      this.visibleOrderCount = 15;
+      this.orderPage = 1;
       this.selectedOrderIds = [];
     },
 
     clearOrderSearch() {
       this.orderSearchQuery = '';
       this.orderSearchResults = [];
-      this.visibleOrderCount = 15;
+      this.orderPage = 1;
     },
 
     currentOrders() {
@@ -485,9 +488,10 @@ document.addEventListener('alpine:init', () => {
     },
 
     filteredOrders() {
-      return this.currentOrders()
+      const filtered = this.currentOrders()
         .filter(o => o.status === this.orderStatusTab)
         .filter(o => this.paymentFilter[o.paymentMethod]);
+      return this.orderSortDirection === 'asc' ? [...filtered].reverse() : filtered;
     },
 
     filteredTotal() {
@@ -495,15 +499,34 @@ document.addEventListener('alpine:init', () => {
     },
 
     visibleOrders() {
-      return this.filteredOrders().slice(0, this.visibleOrderCount);
+      const start = (this.orderPage - 1) * this.orderPageSize;
+      return this.filteredOrders().slice(start, start + this.orderPageSize);
+    },
+
+    totalOrderPages() {
+      return Math.max(1, Math.ceil(this.filteredOrders().length / this.orderPageSize));
+    },
+
+    prevOrderPage() {
+      if (this.orderPage > 1) this.orderPage -= 1;
+    },
+
+    nextOrderPage() {
+      if (this.orderPage < this.totalOrderPages()) this.orderPage += 1;
+    },
+
+    toggleOrderSort() {
+      this.orderSortDirection = this.orderSortDirection === 'desc' ? 'asc' : 'desc';
+      this.orderPage = 1;
+    },
+
+    onOrderPageSizeChange(value) {
+      this.orderPageSize = Number(value);
+      this.orderPage = 1;
     },
 
     onFilterChange() {
-      this.visibleOrderCount = 15;
-    },
-
-    showMoreOrders() {
-      this.visibleOrderCount += 15;
+      this.orderPage = 1;
     },
 
     toggleOrderSelected(orderId) {
@@ -563,6 +586,10 @@ document.addEventListener('alpine:init', () => {
 
     async deleteOrder(order) {
       this.openOrderMenuId = null;
+      if (order.status === 'entregue' || order.status === 'cancelado') {
+        this.showToast('Pedido entregue ou cancelado não pode ser excluído.');
+        return;
+      }
       if (!confirm('Excluir este pedido definitivamente? Essa ação não pode ser desfeita.')) {
         return;
       }
@@ -606,6 +633,7 @@ document.addEventListener('alpine:init', () => {
         chevronLeft: { strokeWidth: 2, body: '<path d="m15 18-6-6 6-6"/>' },
         chevronRight: { strokeWidth: 2, body: '<path d="m9 18 6-6-6-6"/>' },
         moreVertical: { strokeWidth: 2, body: '<circle cx="12" cy="5" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.8" fill="currentColor" stroke="none"/>' },
+        sort: { strokeWidth: 2, body: '<path d="M8 16v-9M8 16l-3-3M8 16l3-3"/><path d="M16 8v9M16 8l3 3M16 8l-3 3"/>' },
         trash: { strokeWidth: 2, body: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>' },
         calendar: { strokeWidth: 2, body: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/>' },
         person: { strokeWidth: 2, body: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
