@@ -1,7 +1,7 @@
-import { findCustomerByPhone, saveCustomer, listCustomers } from './customers.js';
-import { seedProductsIfEmpty, listProducts, listActiveProducts, saveProduct, setProductActive } from './products.js';
-import { createOrder, updateOrder, listOrdersForDay, listAllOrders, localDateString, updateOrderStatus, removeOrder } from './orders.js';
+import { findCustomerByPhone, listCustomers, saveCustomer } from './customers.js';
+import { createOrder, listAllOrders, listOrdersForDay, localDateString, removeOrder, updateOrder, updateOrderStatus } from './orders.js';
 import { buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
+import { listActiveProducts, listProducts, saveProduct, seedProductsIfEmpty, setProductActive } from './products.js';
 
 const VALID_DDDS = new Set([
   '11', '12', '13', '14', '15', '16', '17', '18', '19',
@@ -67,7 +67,7 @@ document.addEventListener('alpine:init', () => {
     showOrderForm: false,
     todayOrders: [],
     orderPage: 1,
-    orderPageSize: 15,
+    orderPageSize: 5,
     orderSortDirection: 'desc',
     orderSearchQuery: '',
     orderSearchResults: [],
