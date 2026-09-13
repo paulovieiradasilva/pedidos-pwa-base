@@ -743,6 +743,16 @@ document.addEventListener('alpine:init', () => {
       return lines;
     },
 
+    auditValueLine(entry) {
+      if (entry.action === 'edit') {
+        const current = this.auditCurrentOrders[entry.orderId];
+        if (current && current.total !== entry.orderSnapshot.total) {
+          return `R$ ${this.formatCurrency(entry.orderSnapshot.total)} → R$ ${this.formatCurrency(current.total)}`;
+        }
+      }
+      return `R$ ${this.formatCurrency(entry.orderSnapshot.total)}`;
+    },
+
     icon(name, size = 16) {
       const paths = {
         add: { strokeWidth: 2.2, body: '<path d="M12 5v14M5 12h14"/>' },
