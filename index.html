@@ -37,18 +37,28 @@
   >
     <nav class="flex border-b border-gray-200 mb-5">
       <button
-        class="flex-1 pb-3 text-base"
+        class="flex-1 pb-3 flex flex-col items-center gap-1"
         :class="currentView === 'pedidosDoDia' ? 'font-semibold text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'"
         @click="setView('pedidosDoDia')"
       >
-        <span x-html="icon('shoppingBag', 24) + ' Pedidos'"></span>
+        <span x-html="icon('receipt', 22)"></span>
+        <span class="text-xs">Pedidos</span>
       </button>
       <button
-        class="flex-1 pb-3 text-base"
+        class="flex-1 pb-3 flex flex-col items-center gap-1"
         :class="currentView === 'produtos' ? 'font-semibold text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'"
         @click="setView('produtos')"
       >
-        <span x-html="icon('list', 24) + ' Produtos'"></span>
+        <span x-html="icon('tag', 22)"></span>
+        <span class="text-xs">Produtos</span>
+      </button>
+      <button
+        class="flex-1 pb-3 flex flex-col items-center gap-1"
+        :class="currentView === 'historico' ? 'font-semibold text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'"
+        @click="setView('historico')"
+      >
+        <span x-html="icon('history', 22)"></span>
+        <span class="text-xs">Histórico</span>
       </button>
     </nav>
 
@@ -912,6 +922,94 @@
       </div>
     </template>
 
+    <template x-if="currentView === 'historico'">
+      <div>
+        <h1 class="text-xl font-bold mb-4">Histórico</h1>
+
+        <div class="flex items-center gap-2 mb-4">
+          <button
+            type="button"
+            class="border rounded-lg p-2 text-gray-600 shrink-0"
+            aria-label="Dia anterior"
+            @click="shiftHistoricoDate(-1)"
+            x-html="icon('chevronLeft')"
+          ></button>
+          <div class="relative flex-1">
+            <div
+              class="border rounded-lg p-2 pr-9 w-full bg-white"
+              x-text="formatDateDisplay(historicoDate)"
+            ></div>
+            <input
+              type="date"
+              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              x-model="historicoDate"
+            />
+            <span
+              class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
+              x-html="icon('calendar')"
+            ></span>
+          </div>
+          <button
+            type="button"
+            class="border rounded-lg p-2 text-gray-600 shrink-0"
+            aria-label="Próximo dia"
+            @click="shiftHistoricoDate(1)"
+            x-html="icon('chevronRight')"
+          ></button>
+          <button
+            type="button"
+            class="border rounded-lg p-2 text-gray-600 shrink-0"
+            aria-label="Fechamento de caixa"
+            @click="printDailyClosing()"
+            x-html="icon('printer')"
+          ></button>
+        </div>
+
+        <template x-if="historicoEntriesForDay().length === 0">
+          <p class="text-sm text-gray-600">Nenhuma alteração registrada nesse dia.</p>
+        </template>
+
+        <div class="relative pl-6">
+          <template x-if="historicoEntriesForDay().length > 0">
+            <div class="absolute left-[6px] top-1 bottom-1 w-0.5 bg-gray-200"></div>
+          </template>
+          <template x-for="entry in historicoEntriesForDay()" :key="entry.id">
+            <div class="relative pb-5 last:pb-0">
+              <span
+                class="absolute -left-6 top-0.5 w-3.5 h-3.5 rounded-full border-2 border-white"
+                :class="auditDotClass(entry.action)"
+              ></span>
+              <p
+                class="text-xs font-semibold text-gray-500"
+                x-text="formatAuditTime(entry) + ' · ' + auditActionLabel(entry)"
+              ></p>
+              <template x-if="auditChangeSummary(entry)">
+                <p class="text-sm mt-0.5" x-text="auditChangeSummary(entry)"></p>
+              </template>
+              <p
+                class="text-xs text-gray-500 mt-0.5"
+                x-text="formatPhoneMask(entry.orderSnapshot.customerPhone)"
+              ></p>
+              <template x-if="entry.orderSnapshot.address">
+                <p class="text-xs text-gray-500" x-text="entry.orderSnapshot.address"></p>
+              </template>
+              <template x-if="entry.action === 'delete'">
+                <p
+                  class="text-xs text-gray-500"
+                  x-text="orderItemLabels(entry.orderSnapshot).join(', ')"
+                ></p>
+              </template>
+              <p
+                class="text-sm font-bold mt-0.5"
+                :class="entry.action === 'delete' ? 'text-red-700' : 'text-gray-900'"
+                x-text="'R$ ' + formatCurrency(entry.orderSnapshot.total)"
+              ></p>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
     <div
       x-show="toastVisible"
       x-transition:enter="transition ease-out duration-200"
@@ -935,7 +1033,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./service-worker.js?v=25")
+          .register("./service-worker.js?v=32")
           .then((reg) => {
             reg.update();
             document.addEventListener("visibilitychange", () => {

@@ -1,5 +1,8 @@
 import { getAll, get, put, remove } from './db.js';
 import { listProducts } from './products.js';
+import { logOrderChange } from './auditLog.js';
+
+const ROUTINE_STATUS_TRANSITIONS = new Set(['pendente>impresso', 'impresso>entregue']);
 
 export function localDateString(date = new Date()) {
   const y = date.getFullYear();
@@ -48,6 +51,7 @@ export async function createOrder(input) {
 export async function updateOrder(id, input) {
   const order = await get('orders', id);
   if (!order) return null;
+  await logOrderChange('edit', order);
 
   const products = await listProducts();
   const productById = Object.fromEntries(products.map(p => [p.id, p]));
@@ -80,11 +84,19 @@ export async function listOrdersForDay(dateISO) {
 export async function updateOrderStatus(id, status) {
   const order = await get('orders', id);
   if (!order) return;
+  const transitionKey = `${order.status}>${status}`;
+  if (!ROUTINE_STATUS_TRANSITIONS.has(transitionKey)) {
+    await logOrderChange('status', order, { fromStatus: order.status, toStatus: status });
+  }
   order.status = status;
   await put('orders', order);
 }
 
 export async function removeOrder(id) {
+  const order = await get('orders', id);
+  if (order) {
+    await logOrderChange('delete', order);
+  }
   await remove('orders', id);
 }
 

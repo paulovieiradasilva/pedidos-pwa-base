@@ -1,7 +1,8 @@
 import { findCustomerByPhone, listCustomers, saveCustomer } from './customers.js';
 import { createOrder, listAllOrders, listOrdersForDay, localDateString, removeOrder, updateOrder, updateOrderStatus } from './orders.js';
-import { buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
+import { buildClosingReceiptBytes, buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
 import { listActiveProducts, listProducts, saveProduct, seedProductsIfEmpty, setProductActive } from './products.js';
+import { listAuditLog } from './auditLog.js';
 
 const VALID_DDDS = new Set([
   '11', '12', '13', '14', '15', '16', '17', '18', '19',
@@ -77,6 +78,9 @@ document.addEventListener('alpine:init', () => {
     selectedOrderIds: [],
     openOrderMenuId: null,
     printerCharacteristic: null,
+    auditLog: [],
+    auditCurrentOrders: {},
+    historicoDate: localDateString(new Date()),
 
     productForm: {
       id: null, name: '', brand: '',
@@ -114,7 +118,27 @@ document.addEventListener('alpine:init', () => {
         this.customers = await listCustomers();
         this.selectedOrderIds = [];
         await this.refreshOrders();
+      } else if (view === 'historico') {
+        await this.refreshHistorico();
       }
+    },
+
+    async refreshHistorico() {
+      const [auditLog, allOrders, products] = await Promise.all([listAuditLog(), listAllOrders(), listProducts()]);
+      this.auditLog = auditLog;
+      this.auditCurrentOrders = Object.fromEntries(allOrders.map(o => [o.id, o]));
+      this.products = products;
+    },
+
+    shiftHistoricoDate(deltaDays) {
+      const [y, m, d] = this.historicoDate.split('-').map(Number);
+      const date = new Date(y, m - 1, d);
+      date.setDate(date.getDate() + deltaDays);
+      this.historicoDate = localDateString(date);
+    },
+
+    historicoEntriesForDay() {
+      return this.auditLog.filter(e => localDateString(new Date(e.timestamp)) === this.historicoDate);
     },
 
     setOrderStatusTab(tab) {
@@ -565,6 +589,30 @@ document.addEventListener('alpine:init', () => {
       await this.refreshOrders();
     },
 
+    async printDailyClosing() {
+      const dayOrders = await listOrdersForDay(this.historicoDate);
+      if (dayOrders.length === 0) {
+        this.showToast('Nenhum pedido nesse dia pra fechar.');
+        return;
+      }
+      try {
+        const printedAt = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        const dateLabel = `${this.formatDateDisplay(this.historicoDate)} · ${printedAt}`;
+        const bytes = buildClosingReceiptBytes(dayOrders, dateLabel, this.products, {
+          businessName: window.APP_CONFIG?.businessName,
+          title: window.APP_CONFIG?.closingReceiptTitle ?? 'FECHAMENTO'
+        });
+        if (!this.printerCharacteristic) {
+          this.printerCharacteristic = await connectPrinter();
+        }
+        await printReceipt(this.printerCharacteristic, bytes);
+        this.showToast('Fechamento impresso.');
+      } catch (err) {
+        this.printerCharacteristic = null;
+        this.showToast('Falha ao imprimir o fechamento. Tente novamente.');
+      }
+    },
+
     async markOrderDelivered(order) {
       await updateOrderStatus(order.id, 'entregue');
       await this.refreshOrders();
@@ -620,6 +668,45 @@ document.addEventListener('alpine:init', () => {
       return { dinheiro: 'Dinheiro', pix: 'Pix', cartao: 'Cartão' }[method] ?? method;
     },
 
+    orderStatusLabel(status) {
+      return { pendente: 'Pendente', impresso: 'Impresso', entregue: 'Entregue', cancelado: 'Cancelado' }[status] ?? status;
+    },
+
+    auditActionLabel(entry) {
+      if (entry.action === 'status') return this.orderStatusLabel(entry.toStatus);
+      return { edit: 'Editado', delete: 'Excluído' }[entry.action] ?? entry.action;
+    },
+
+    auditDotClass(action) {
+      return { edit: 'bg-blue-600', status: 'bg-purple-600', delete: 'bg-red-600' }[action] ?? 'bg-gray-400';
+    },
+
+    formatAuditTime(entry) {
+      return new Date(entry.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    },
+
+    auditChangeSummary(entry) {
+      if (entry.action === 'status') {
+        return `${this.orderStatusLabel(entry.fromStatus)} → ${this.orderStatusLabel(entry.toStatus)}`;
+      }
+      if (entry.action === 'delete') {
+        return null;
+      }
+      const current = this.auditCurrentOrders[entry.orderId];
+      if (!current) return 'Dados editados';
+      const changes = [];
+      if (current.paymentMethod !== entry.orderSnapshot.paymentMethod) {
+        changes.push(`Pagamento: ${this.paymentMethodLabel(entry.orderSnapshot.paymentMethod)} → ${this.paymentMethodLabel(current.paymentMethod)}`);
+      }
+      if (current.address !== entry.orderSnapshot.address) {
+        changes.push('Endereço alterado');
+      }
+      if (JSON.stringify(current.items) !== JSON.stringify(entry.orderSnapshot.items)) {
+        changes.push('Itens alterados');
+      }
+      return changes.length > 0 ? changes.join(' · ') : 'Dados editados';
+    },
+
     icon(name, size = 16) {
       const paths = {
         add: { strokeWidth: 2.2, body: '<path d="M12 5v14M5 12h14"/>' },
@@ -639,8 +726,10 @@ document.addEventListener('alpine:init', () => {
         person: { strokeWidth: 2, body: '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>' },
         package: { strokeWidth: 2, body: '<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="M3.3 7 12 12l8.7-5M12 22V12"/>' },
         location: { strokeWidth: 2, body: '<path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/>' },
-        shoppingBag: { strokeWidth: 2, body: '<path d="M6 7h12l1 13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1L6 7Z"/><path d="M9 7a3 3 0 0 1 6 0"/>' },
-        list: { strokeWidth: 2, body: '<path d="M4 6h16M4 12h16M4 18h10"/>' }
+        receipt: { strokeWidth: 2, body: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8M8 11h8M8 15h5"/>' },
+        tag: { strokeWidth: 2, body: '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1.5"/>' },
+        printer: { strokeWidth: 2, body: '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>' },
+        history: { strokeWidth: 2, body: '<path d="M3 12a9 9 0 1 0 2.64-6.36"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>' }
       };
       const spec = paths[name];
       if (!spec) return '';

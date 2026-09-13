@@ -22,6 +22,15 @@ function gramsToKgLabel(grams) {
   return `${parseFloat(kg.toFixed(3))}kg`.replace('.', ',');
 }
 
+function assembleReceiptBytes(text) {
+  const body = encodeLatin1(text);
+  const result = new Uint8Array(ESC_INIT.length + ESC_CODEPAGE_WPC1252.length + body.length);
+  result.set(ESC_INIT, 0);
+  result.set(ESC_CODEPAGE_WPC1252, ESC_INIT.length);
+  result.set(body, ESC_INIT.length + ESC_CODEPAGE_WPC1252.length);
+  return result;
+}
+
 export function buildReceiptBytes(order, customer, products) {
   const priceById = Object.fromEntries(products.map(p => [p.id, p]));
 
@@ -43,14 +52,71 @@ export function buildReceiptBytes(order, customer, products) {
   }
   lines.push('\n\n');
 
-  const text = lines.join('\n');
-  const body = encodeLatin1(text);
+  return assembleReceiptBytes(lines.join('\n'));
+}
 
-  const result = new Uint8Array(ESC_INIT.length + ESC_CODEPAGE_WPC1252.length + body.length);
-  result.set(ESC_INIT, 0);
-  result.set(ESC_CODEPAGE_WPC1252, ESC_INIT.length);
-  result.set(body, ESC_INIT.length + ESC_CODEPAGE_WPC1252.length);
-  return result;
+function aggregateDeliveredItems(delivered, products) {
+  const priceById = Object.fromEntries(products.map(p => [p.id, p]));
+  const counts = {};
+  for (const order of delivered) {
+    for (const item of order.items ?? []) {
+      const product = priceById[item.productId];
+      const label = product ? (product.brand ? `${product.name} ${product.brand}` : product.name) : 'Produto removido';
+      if (!counts[label]) counts[label] = { qty: 0, grams: 0 };
+      if (item.grams != null) {
+        counts[label].grams += item.grams;
+      } else {
+        counts[label].qty += item.qty ?? 0;
+      }
+    }
+  }
+  return counts;
+}
+
+export function buildClosingReceiptBytes(orders, dateLabel, products = [], options = {}) {
+  const { businessName, title = 'FECHAMENTO' } = options;
+  const delivered = orders.filter(o => o.status === 'entregue');
+  const cancelled = orders.filter(o => o.status === 'cancelado');
+  const totalsByPayment = { dinheiro: 0, pix: 0, cartao: 0 };
+  for (const o of delivered) {
+    totalsByPayment[o.paymentMethod] = (totalsByPayment[o.paymentMethod] ?? 0) + o.total;
+  }
+  const totalGeral = delivered.reduce((sum, o) => sum + o.total, 0);
+  const itemCounts = aggregateDeliveredItems(delivered, products);
+
+  const lines = [];
+  if (businessName) lines.push(businessName);
+  lines.push(`=== ${title} ===`);
+  lines.push(dateLabel);
+  lines.push('');
+  lines.push(`Pedidos entregues: ${delivered.length}`);
+  lines.push(`Pedidos cancelados: ${cancelled.length}`);
+  lines.push('');
+  lines.push(`Dinheiro: R$ ${totalsByPayment.dinheiro.toFixed(2)}`);
+  lines.push(`Pix: R$ ${totalsByPayment.pix.toFixed(2)}`);
+  lines.push(`Cartao: R$ ${totalsByPayment.cartao.toFixed(2)}`);
+  lines.push('');
+  lines.push(`TOTAL DO DIA: R$ ${totalGeral.toFixed(2)}`);
+
+  const itemLines = Object.entries(itemCounts).map(([label, { qty, grams }]) => {
+    const parts = [];
+    if (qty > 0) parts.push(`${qty}x ${label}`);
+    if (grams > 0) parts.push(`${gramsToKgLabel(grams)} ${label}`);
+    return parts.join(' + ');
+  });
+  if (itemLines.length > 0) {
+    lines.push('');
+    lines.push('Itens entregues:');
+    lines.push(...itemLines);
+  }
+
+  lines.push('');
+  lines.push('Conferido por:');
+  lines.push('');
+  lines.push('_____________________');
+  lines.push('\n\n');
+
+  return assembleReceiptBytes(lines.join('\n'));
 }
 
 export async function connectPrinter() {

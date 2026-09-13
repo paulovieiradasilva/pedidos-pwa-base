@@ -1,9 +1,10 @@
 const DB_NAME = 'pedidos-db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORES = {
   customers: 'phone',
   products: 'id',
-  orders: 'id'
+  orders: 'id',
+  auditLog: 'id'
 };
 
 let dbPromise = null;
