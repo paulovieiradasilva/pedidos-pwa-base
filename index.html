@@ -35,6 +35,7 @@
     x-data="pedidosApp"
     x-init="init()"
   >
+    <!-- ===== NAVEGAÇÃO PRINCIPAL (abas Pedidos / Produtos / Histórico) ===== -->
     <nav class="flex border-b border-gray-200 mb-5">
       <button
         class="flex-1 pb-3 flex flex-col items-center gap-1"
@@ -60,6 +61,7 @@
         <span x-html="icon('history', 22)"></span>
         <span class="text-xs">Histórico</span>
       </button>
+      <!-- Menu "..." de desenvolvedor (Limpar dados) — só aparece com config.js features.devMode = true -->
       <template x-if="devModeEnabled()">
         <span class="shrink-0 pb-3 flex items-center">
           <span class="relative">
@@ -91,6 +93,7 @@
       </template>
     </nav>
 
+    <!-- ===== ABA: PRODUTOS ===== -->
     <template x-if="currentView === 'produtos'">
       <div>
         <div class="flex justify-between items-baseline mb-4">
@@ -106,6 +109,7 @@
           </button>
         </div>
 
+        <!-- Formulário de cadastro/edição de produto -->
         <template x-if="showProductForm">
           <div
             class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4"
@@ -215,6 +219,7 @@
           </div>
         </template>
 
+        <!-- Lista de produtos (busca, filtro ativos/todos, ativar/desativar) -->
         <template x-if="!showProductForm">
           <div>
             <input
@@ -314,6 +319,7 @@
       </div>
     </template>
 
+    <!-- ===== ABA: PEDIDOS DO DIA ===== -->
     <template x-if="currentView === 'pedidosDoDia'">
       <div>
         <div class="flex justify-between items-baseline mb-4">
@@ -329,8 +335,10 @@
           </button>
         </div>
 
+        <!-- Formulário de novo pedido / edição -->
         <template x-if="showOrderForm">
           <div>
+            <!-- Busca de cliente por telefone (com autocomplete) e endereço -->
             <div
               class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4"
             >
@@ -416,6 +424,7 @@
               </div>
             </div>
 
+            <!-- Seleção de produto e quantidade/peso, e lista de itens do carrinho -->
             <div
               class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4"
             >
@@ -426,23 +435,76 @@
                   >Adicionar produto</span
                 >
               </div>
-              <div class="relative mb-3 border rounded-lg overflow-hidden">
-                <select
-                  class="p-2 pr-9 w-[calc(100%+40px)] appearance-none bg-white border-0 outline-none"
-                  x-model="selectedProductId"
+              <!-- Lista própria (não é <select> nativo) pra poder mostrar nome e marca
+                   em linhas separadas — sem preço aqui, porque ele muda de acordo com a
+                   forma de pagamento, escolhida só depois no carrinho. -->
+              <div class="relative mb-3">
+                <button
+                  type="button"
+                  class="border rounded-lg p-2 w-full flex items-center justify-between gap-2 bg-white"
+                  @click.stop="toggleProductPicker()"
                 >
-                  <option value="" disabled>Selecione um produto</option>
-                  <template x-for="p in activeProducts" :key="p.id">
-                    <option
-                      :value="p.id"
-                      x-text="productDisplayName(p)"
-                    ></option>
-                  </template>
-                </select>
-                <span
-                  class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none"
-                  x-html="icon('chevronDown')"
-                ></span>
+                  <span
+                    class="truncate text-left"
+                    :class="selectedNewOrderProduct() ? 'text-gray-900' : 'text-gray-500'"
+                    x-text="selectedNewOrderProduct() ? selectedNewOrderProduct().name : 'Selecione um produto'"
+                  ></span>
+                  <span
+                    class="text-gray-500 shrink-0"
+                    x-html="icon('chevronDown')"
+                  ></span>
+                </button>
+                <template x-if="productPickerOpen">
+                  <div
+                    class="absolute left-0 right-0 mt-1 bg-white border rounded-xl shadow-md z-20 overflow-hidden"
+                    @click.outside="productPickerOpen = false"
+                  >
+                    <!-- Busca por nome/marca (fica fixa no topo, fora da área que rola) -->
+                    <div class="p-2 border-b">
+                      <input
+                        type="text"
+                        placeholder="Buscar produto"
+                        class="border rounded-lg p-2 w-full text-sm"
+                        x-model="productPickerQuery"
+                        autofocus
+                      />
+                    </div>
+                    <div class="max-h-56 overflow-y-auto">
+                      <template x-for="p in filteredActiveProducts()" :key="p.id">
+                        <button
+                          type="button"
+                          class="flex items-center justify-between gap-2 w-full text-left px-3 py-2 border-b last:border-b-0"
+                          :class="p.id === selectedProductId && 'bg-blue-50'"
+                          @click="chooseOrderProduct(p.id)"
+                        >
+                          <span class="min-w-0">
+                            <span
+                              class="block text-sm font-medium truncate"
+                              x-text="p.name"
+                            ></span>
+                            <template x-if="p.brand">
+                              <span
+                                class="block text-xs text-gray-500 truncate"
+                                x-text="p.brand"
+                              ></span>
+                            </template>
+                          </span>
+                          <template x-if="p.id === selectedProductId">
+                            <span
+                              class="text-blue-600 shrink-0"
+                              x-html="icon('check', 16)"
+                            ></span>
+                          </template>
+                        </button>
+                      </template>
+                      <template x-if="filteredActiveProducts().length === 0">
+                        <p class="text-sm text-gray-600 px-3 py-2">
+                          Nenhum produto encontrado.
+                        </p>
+                      </template>
+                    </div>
+                  </div>
+                </template>
               </div>
 
               <template x-if="!selectedNewOrderProduct()?.soldByWeight">
@@ -525,6 +587,7 @@
               ></button>
             </div>
 
+            <!-- Forma de pagamento e cálculo de troco -->
             <div
               class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4"
             >
@@ -594,6 +657,8 @@
           </div>
         </template>
 
+        <!-- Lista de pedidos: busca em todo o histórico, filtro por dia/status/pagamento,
+             seleção em massa + impressão, paginação -->
         <template x-if="!showOrderForm">
           <div>
             <div class="relative mb-3">
@@ -951,6 +1016,10 @@
       </div>
     </template>
 
+    <!-- ===== ABA: HISTÓRICO (log de auditoria) =====
+         Mostra, por dia, cada edição/cancelamento/exclusão/reversão de pedido
+         (não mostra o fluxo rotineiro pendente->impresso->entregue).
+         Botão de impressora aqui = fechamento de caixa do dia selecionado. -->
     <template x-if="currentView === 'historico'">
       <div>
         <h1 class="text-xl font-bold mb-4">Histórico</h1>
@@ -1039,6 +1108,7 @@
       </div>
     </template>
 
+    <!-- ===== NOTIFICAÇÃO TOAST (mensagens rápidas no topo da tela) ===== -->
     <div
       x-show="toastVisible"
       x-transition:enter="transition ease-out duration-200"
@@ -1059,10 +1129,14 @@
       ></div>
     </div>
 
+    <!-- ===== REGISTRO DO SERVICE WORKER (deixa o app funcionar offline/instalável) =====
+         O "?v=40" aqui e o CACHE_NAME em service-worker.js sempre têm que ser
+         aumentados juntos, para o MESMO número, a cada mudança no app — senão o
+         celular do usuário pode continuar mostrando uma versão antiga. -->
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./service-worker.js?v=38")
+          .register("./service-worker.js?v=40")
           .then((reg) => {
             reg.update();
             document.addEventListener("visibilitychange", () => {

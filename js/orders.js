@@ -1,9 +1,17 @@
+// CRUD de pedidos e cálculo de totais. É aqui que fica a regra de quais mudanças
+// de pedido geram uma entrada no Histórico (auditoria) e quais não geram.
+
 import { getAll, get, put, remove } from './db.js';
 import { listProducts } from './products.js';
 import { logOrderChange } from './auditLog.js';
 
+// Transições de status consideradas "do dia a dia" (fluxo normal do negócio) —
+// não geram registro no Histórico, porque não são sinal de possível fraude/erro.
+// Qualquer outra transição (cancelar, reverter, etc.) é logada.
 const ROUTINE_STATUS_TRANSITIONS = new Set(['pendente>impresso', 'impresso>entregue']);
 
+// Formata uma data como "AAAA-MM-DD" no fuso horário local (usado para agrupar
+// pedidos por dia, ex.: "pedidos de hoje").
 export function localDateString(date = new Date()) {
   const y = date.getFullYear();
   const m = String(date.getMonth() + 1).padStart(2, '0');
@@ -11,6 +19,9 @@ export function localDateString(date = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
+// Soma o valor de todos os itens do carrinho. Produto vendido por peso usa
+// `manualTotal` (se o valor foi digitado direto) ou preço/kg x peso; produto
+// normal usa o preço da forma de pagamento escolhida x quantidade.
 function computeOrderTotal(items, paymentMethod, productById) {
   return items.reduce((sum, item) => {
     const product = productById[item.productId];
@@ -21,6 +32,8 @@ function computeOrderTotal(items, paymentMethod, productById) {
   }, 0);
 }
 
+// Cria um novo pedido (status inicial sempre "pendente"). Criação de pedido
+// nunca é logada no Histórico — só alterações depois de criado.
 export async function createOrder(input) {
   const products = await listProducts();
   const productById = Object.fromEntries(products.map(p => [p.id, p]));
@@ -48,6 +61,11 @@ export async function createOrder(input) {
   return order;
 }
 
+// Edita um pedido existente (itens, endereço, forma de pagamento etc.) e volta
+// o status para "pendente". Sempre gera uma entrada no Histórico com o estado
+// de ANTES (`before`) e de DEPOIS (`orderAfter`) gravados no momento exato da
+// edição — importante para o "antes -> depois" no Histórico não mudar mais
+// tarde se o pedido for editado de novo (cada edição é uma foto congelada).
 export async function updateOrder(id, input) {
   const order = await get('orders', id);
   if (!order) return null;
@@ -75,6 +93,7 @@ export async function updateOrder(id, input) {
   return order;
 }
 
+// Lista os pedidos criados em um dia específico (usado na aba "Pedidos do Dia").
 export async function listOrdersForDay(dateISO) {
   const all = await getAll('orders');
   return all
@@ -82,6 +101,8 @@ export async function listOrdersForDay(dateISO) {
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
+// Muda o status do pedido (ex.: marcar como impresso/entregue/cancelado).
+// Só grava no Histórico se a transição não for uma das rotineiras acima.
 export async function updateOrderStatus(id, status) {
   const order = await get('orders', id);
   if (!order) return;
@@ -93,6 +114,8 @@ export async function updateOrderStatus(id, status) {
   await put('orders', order);
 }
 
+// Exclui definitivamente um pedido, guardando no Histórico uma cópia dele antes
+// de apagar (senão a exclusão não deixaria nenhum rastro).
 export async function removeOrder(id) {
   const order = await get('orders', id);
   if (order) {
@@ -101,6 +124,8 @@ export async function removeOrder(id) {
   await remove('orders', id);
 }
 
+// Lista todos os pedidos já feitos (qualquer dia) — usado na busca por
+// telefone/endereço em todo o histórico e no fechamento de caixa.
 export async function listAllOrders() {
   const all = await getAll('orders');
   return all.sort((a, b) => b.createdAt.localeCompare(a.createdAt));

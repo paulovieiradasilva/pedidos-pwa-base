@@ -1,3 +1,7 @@
+// Camada de acesso ao IndexedDB (o "banco de dados" do app, dentro do navegador/celular).
+// Guarda 4 "gavetas" (stores): clientes, produtos, pedidos e o histórico de auditoria.
+// Todas as outras partes do sistema leem/gravam dados só através das funções daqui.
+
 const DB_NAME = 'pedidos-db';
 const DB_VERSION = 2;
 const STORES = {
@@ -9,6 +13,8 @@ const STORES = {
 
 let dbPromise = null;
 
+// Abre a conexão com o banco (criando as gavetas na primeira vez que o app roda).
+// Reaproveita a mesma conexão em chamadas seguintes (só abre uma vez).
 export function openDB() {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
@@ -27,6 +33,7 @@ export function openDB() {
   return dbPromise;
 }
 
+// Cria ou atualiza um registro em uma gaveta (ex.: salvar um pedido).
 export async function put(storeName, value) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -37,6 +44,7 @@ export async function put(storeName, value) {
   });
 }
 
+// Busca um único registro pela sua chave (ex.: um pedido pelo id).
 export async function get(storeName, key) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -47,6 +55,7 @@ export async function get(storeName, key) {
   });
 }
 
+// Busca todos os registros de uma gaveta (ex.: todos os produtos cadastrados).
 export async function getAll(storeName) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -57,6 +66,7 @@ export async function getAll(storeName) {
   });
 }
 
+// Apaga um registro pela sua chave.
 export async function remove(storeName, key) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
@@ -67,6 +77,8 @@ export async function remove(storeName, key) {
   });
 }
 
+// Apaga o banco de dados inteiro (usado pelo menu "Limpar dados", modo desenvolvedor).
+// Fecha a conexão aberta antes de apagar, senão o navegador bloqueia a exclusão.
 export async function deleteDatabase() {
   if (dbPromise) {
     const db = await dbPromise;

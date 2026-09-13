@@ -1,3 +1,6 @@
+// Impressão via impressora térmica Bluetooth (ESC/POS): monta o texto do recibo,
+// converte para os bytes que a impressora entende e envia por Bluetooth.
+
 // Placeholder UUIDs for a common ESC/POS BLE clone chipset — Task 7 Step 0
 // requires swapping these for the exact values read from the Task 0 spike log
 // before connecting to the real printer.
@@ -17,11 +20,14 @@ function encodeLatin1(text) {
   return bytes;
 }
 
+// Formata uma quantidade em gramas como texto de kg (ex.: 1500 -> "1,5kg").
 function gramsToKgLabel(grams) {
   const kg = grams / 1000;
   return `${parseFloat(kg.toFixed(3))}kg`.replace('.', ',');
 }
 
+// Junta os comandos ESC/POS de inicialização + seleção de codepage com o texto
+// já codificado, produzindo os bytes finais prontos para enviar à impressora.
 function assembleReceiptBytes(text) {
   const body = encodeLatin1(text);
   const result = new Uint8Array(ESC_INIT.length + ESC_CODEPAGE_WPC1252.length + body.length);
@@ -31,6 +37,8 @@ function assembleReceiptBytes(text) {
   return result;
 }
 
+// Monta o recibo de um único pedido (endereço, itens, total, forma de pagamento
+// e troco) já como bytes prontos para imprimir.
 export function buildReceiptBytes(order, customer, products) {
   const priceById = Object.fromEntries(products.map(p => [p.id, p]));
 
@@ -55,6 +63,8 @@ export function buildReceiptBytes(order, customer, products) {
   return assembleReceiptBytes(lines.join('\n'));
 }
 
+// Soma, por produto, o total de itens entregues no dia (usado no recibo de
+// fechamento de caixa, na seção "Itens entregues").
 function aggregateDeliveredItems(delivered, products) {
   const priceById = Object.fromEntries(products.map(p => [p.id, p]));
   const counts = {};
@@ -73,6 +83,9 @@ function aggregateDeliveredItems(delivered, products) {
   return counts;
 }
 
+// Monta o recibo de fechamento de caixa do dia: totais por forma de pagamento,
+// total geral, itens entregues e uma linha de assinatura ("Conferido por").
+// `options.businessName`/`options.title` vêm do config.js.
 export function buildClosingReceiptBytes(orders, dateLabel, products = [], options = {}) {
   const { businessName, title = 'FECHAMENTO' } = options;
   const delivered = orders.filter(o => o.status === 'entregue');
@@ -119,6 +132,8 @@ export function buildClosingReceiptBytes(orders, dateLabel, products = [], optio
   return assembleReceiptBytes(lines.join('\n'));
 }
 
+// Abre o seletor de dispositivos Bluetooth do navegador, conecta na impressora
+// e retorna a "characteristic" GATT usada para enviar os bytes do recibo.
 export async function connectPrinter() {
   const device = await navigator.bluetooth.requestDevice({
     acceptAllDevices: true,
@@ -129,6 +144,8 @@ export async function connectPrinter() {
   return service.getCharacteristic(CHARACTERISTIC_UUID);
 }
 
+// Envia os bytes do recibo para a impressora em pedaços pequenos, porque o
+// Bluetooth de baixa energia (BLE) tem um limite de tamanho por envio (MTU).
 export async function printReceipt(characteristic, bytes) {
   const CHUNK_SIZE = 180; // BLE MTU-safe chunk
   for (let offset = 0; offset < bytes.length; offset += CHUNK_SIZE) {

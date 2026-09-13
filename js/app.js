@@ -1,9 +1,16 @@
+// Componente principal do app (Alpine.js). Registra um único objeto grande
+// ("pedidosApp") com todo o estado (dados na tela) e todas as ações (funções)
+// usadas pelo index.html. Está organizado em blocos marcados com "=====" abaixo,
+// na ordem: navegação/histórico, telefone/endereço, carrinho, formulário de
+// pedido, lista de pedidos, ações do pedido, labels/histórico de auditoria,
+// ícones, e formulário de produto.
+
+import { listAuditLog } from './auditLog.js';
 import { findCustomerByPhone, listCustomers, saveCustomer } from './customers.js';
+import { deleteDatabase } from './db.js';
 import { createOrder, listAllOrders, listOrdersForDay, localDateString, removeOrder, updateOrder, updateOrderStatus } from './orders.js';
 import { buildClosingReceiptBytes, buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
 import { listActiveProducts, listProducts, saveProduct, seedProductsIfEmpty, setProductActive } from './products.js';
-import { listAuditLog } from './auditLog.js';
-import { deleteDatabase } from './db.js';
 
 const VALID_DDDS = new Set([
   '11', '12', '13', '14', '15', '16', '17', '18', '19',
@@ -18,6 +25,8 @@ const VALID_DDDS = new Set([
   '91', '92', '93', '94', '95', '96', '97', '98', '99'
 ]);
 
+// Valida um telefone brasileiro: DDD existente + celular (9 dígitos, começa com
+// 9) ou fixo (10 dígitos, não pode começar com 0 ou 1).
 function isValidBrazilianPhone(digits) {
   if (digits.length !== 10 && digits.length !== 11) return false;
   const ddd = digits.slice(0, 2);
@@ -29,6 +38,8 @@ function isValidBrazilianPhone(digits) {
 
 const ADDRESS_LOWERCASE_WORDS = new Set(['de', 'da', 'do', 'das', 'dos', 'e']);
 
+// Deixa o endereço digitado com Primeira Letra Maiúscula em cada palavra,
+// exceto conectivos comuns (de, da, do...) quando não são a primeira palavra.
 function capitalizeAddress(text) {
   return text
     .trim()
@@ -54,6 +65,8 @@ document.addEventListener('alpine:init', () => {
     customerMatchStatus: null,
     phoneError: '',
     selectedProductId: '',
+    productPickerOpen: false,
+    productPickerQuery: '',
     qty: null,
     weightGrams: null,
     weightManualTotal: null,
@@ -85,10 +98,16 @@ document.addEventListener('alpine:init', () => {
     historicoMenuOpen: false,
 
     productForm: {
-      id: null, name: '', brand: '',
-      soldByWeight: false, pricePerKg: null,
-      priceDinheiro: null, pricePix: null, priceCartao: null
+      id: null,
+      name: '',
+      brand: '',
+      soldByWeight: false,
+      pricePerKg: null,
+      priceDinheiro: null,
+      pricePix: null,
+      priceCartao: null
     },
+
     priceSyncPix: true,
     priceSyncCartao: true,
     productFormError: '',
@@ -96,11 +115,16 @@ document.addEventListener('alpine:init', () => {
     productSearch: '',
     productFilter: 'active',
 
+    // ===== Ciclo de vida, navegação entre abas, toast, menu de desenvolvedor =====
+
+    // Roda uma vez quando o app abre: garante o catálogo padrão de produtos e
+    // já carrega a aba inicial (Pedidos do Dia).
     async init() {
       await seedProductsIfEmpty();
       await this.setView('pedidosDoDia');
     },
 
+    // Mostra a notificação (toast) no rodapé por alguns segundos.
     showToast(message) {
       clearTimeout(this.toastTimer);
       this.toastMessage = message;
@@ -110,6 +134,8 @@ document.addEventListener('alpine:init', () => {
       }, 4000);
     },
 
+    // Troca de aba (Pedidos do Dia / Produtos / Histórico) e recarrega os
+    // dados que aquela aba precisa mostrar.
     async setView(view) {
       this.currentView = view;
       if (view === 'produtos') {
@@ -125,6 +151,8 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    // Recarrega os dados da aba Histórico: o log de auditoria, os pedidos
+    // atuais (fallback para entradas antigas sem `orderAfter`) e produtos.
     async refreshHistorico() {
       const [auditLog, allOrders, products] = await Promise.all([listAuditLog(), listAllOrders(), listProducts()]);
       this.auditLog = auditLog;
@@ -132,6 +160,7 @@ document.addEventListener('alpine:init', () => {
       this.products = products;
     },
 
+    // Avança/volta o dia mostrado na aba Histórico (deltaDays: +1 ou -1).
     shiftHistoricoDate(deltaDays) {
       const [y, m, d] = this.historicoDate.split('-').map(Number);
       const date = new Date(y, m - 1, d);
@@ -139,6 +168,7 @@ document.addEventListener('alpine:init', () => {
       this.historicoDate = localDateString(date);
     },
 
+    // Controla se o menu de desenvolvedor ("Limpar dados") aparece na navegação.
     devModeEnabled() {
       return window.APP_CONFIG?.features?.devMode ?? false;
     },
@@ -147,6 +177,8 @@ document.addEventListener('alpine:init', () => {
       this.historicoMenuOpen = !this.historicoMenuOpen;
     },
 
+    // Apaga TODOS os dados do app (pedidos, clientes, produtos, histórico) após
+    // confirmação — usado só em desenvolvimento/testes (menu com devMode).
     async clearDatabase() {
       this.historicoMenuOpen = false;
       if (!confirm('Limpar todos os dados do app? Isso apaga pedidos, clientes, produtos e histórico definitivamente. Essa ação não pode ser desfeita.')) {
@@ -156,6 +188,7 @@ document.addEventListener('alpine:init', () => {
       window.location.reload();
     },
 
+    // Filtra o log de auditoria para mostrar só as entradas do dia selecionado no Histórico.
     historicoEntriesForDay() {
       return this.auditLog.filter(e => localDateString(new Date(e.timestamp)) === this.historicoDate);
     },
@@ -170,6 +203,9 @@ document.addEventListener('alpine:init', () => {
       return (value ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
 
+    // ===== Telefone/endereço: máscara, autocomplete de cliente =====
+
+    // Aplica a máscara "(DD) DDDDD-DDDD" enquanto o usuário digita o telefone.
     formatPhoneMask(value) {
       const digits = value.replace(/\D/g, '').slice(0, 11);
       if (digits.length <= 2) return digits;
@@ -178,6 +214,8 @@ document.addEventListener('alpine:init', () => {
       return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
     },
 
+    // Ao digitar o telefone: aplica a máscara e sugere clientes já cadastrados
+    // com telefone parecido (autocomplete).
     onPhoneInput(event) {
       this.phone = this.formatPhoneMask(event.target.value);
       event.target.value = this.phone;
@@ -188,6 +226,8 @@ document.addEventListener('alpine:init', () => {
         : [];
     },
 
+    // Remove acentos e caixa alta/baixa para comparar textos na busca
+    // (ex.: "José" e "jose" são considerados iguais).
     normalizeSearchText(value) {
       return value
         .normalize('NFD')
@@ -196,6 +236,7 @@ document.addEventListener('alpine:init', () => {
         .toLowerCase();
     },
 
+    // Ao digitar o endereço: sugere clientes já cadastrados com endereço parecido.
     onAddressInput(value) {
       this.address = value;
       const query = this.normalizeSearchText(value);
@@ -204,6 +245,7 @@ document.addEventListener('alpine:init', () => {
         : [];
     },
 
+    // Preenche telefone/endereço com os dados de um cliente escolhido na sugestão.
     applyCustomerSelection(customer) {
       this.phone = this.formatPhoneMask(customer.phone);
       this.address = customer.address;
@@ -213,18 +255,23 @@ document.addEventListener('alpine:init', () => {
       if (document.activeElement) document.activeElement.blur();
     },
 
+    // Chamada pela lista de sugestão de TELEFONE.
     selectPhoneSuggestion(customer) {
       this.applyCustomerSelection(customer);
     },
 
+    // Chamada pela lista de sugestão de ENDEREÇO.
     selectAddressSuggestion(customer) {
       this.applyCustomerSelection(customer);
     },
 
+    // Retorna só os dígitos do telefone (sem parênteses/traço/espaço).
     phoneDigits() {
       return this.phone.replace(/\D/g, '');
     },
 
+    // Ao sair do campo telefone: valida o número e verifica se já existe
+    // cliente com esse telefone (preenchendo o endereço automaticamente).
     async lookupCustomer() {
       const digits = this.phoneDigits();
       if (digits.length !== 10 && digits.length !== 11) {
@@ -247,10 +294,41 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    // ===== Carrinho do pedido novo (adicionar/remover itens, calcular total) =====
+
+    // Retorna o produto atualmente selecionado no formulário de novo item.
     selectedNewOrderProduct() {
       return this.activeProducts.find(p => p.id === this.selectedProductId);
     },
 
+    // Abre/fecha a lista de produtos (usada no lugar de um <select> nativo,
+    // pra poder mostrar nome e marca em linhas separadas, sem preço).
+    // Sempre abre com a busca limpa, pra não esconder produtos por engano
+    // com um filtro de uma vez anterior.
+    toggleProductPicker() {
+      this.productPickerOpen = !this.productPickerOpen;
+      this.productPickerQuery = '';
+    },
+
+    // Escolhe um produto na lista, fecha ela e limpa a busca.
+    chooseOrderProduct(productId) {
+      this.selectedProductId = productId;
+      this.productPickerOpen = false;
+      this.productPickerQuery = '';
+    },
+
+    // Lista de produtos ativos filtrada pela busca do seletor (nome ou marca).
+    filteredActiveProducts() {
+      const query = this.normalizeSearchText(this.productPickerQuery);
+      if (!query) return this.activeProducts;
+      return this.activeProducts.filter(p =>
+        this.normalizeSearchText(this.productDisplayName(p)).includes(query)
+      );
+    },
+
+    // Ao digitar o peso (gramas) de um produto vendido a granel: já calcula o
+    // valor total sugerido (peso x preço/kg), a menos que o usuário já tenha
+    // digitado um valor manualmente.
     onWeightGramsInput(value) {
       this.weightGrams = value === '' ? null : Number(value);
       const product = this.selectedNewOrderProduct();
@@ -259,11 +337,14 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    // Permite digitar o valor total manualmente, sobrepondo o cálculo automático.
     onWeightTotalInput(value) {
       this.weightManualTotal = value === '' ? null : Number(value);
       this.weightTotalTouched = true;
     },
 
+    // Confere se o item que está sendo montado (produto + quantidade/peso)
+    // pode ser adicionado ao carrinho; retorna a mensagem de erro, ou null se ok.
     validateCurrentItem() {
       if (!this.selectedProductId) {
         return 'Selecione um produto antes de adicionar.';
@@ -286,6 +367,7 @@ document.addEventListener('alpine:init', () => {
       this.qty = value === '' ? null : Number(value);
     },
 
+    // Adiciona o item atual ao carrinho (ou salva a edição, se estava editando um item existente).
     addCartItem() {
       const error = this.validateCurrentItem();
       if (error) {
@@ -312,6 +394,7 @@ document.addEventListener('alpine:init', () => {
       this.weightTotalTouched = false;
     },
 
+    // Carrega um item do carrinho de volta no formulário para editar.
     startEditCartItem(index) {
       const item = this.cartItems[index];
       this.selectedProductId = item.productId;
@@ -329,6 +412,7 @@ document.addEventListener('alpine:init', () => {
       this.editingCartItemIndex = index;
     },
 
+    // Remove um item do carrinho.
     removeCartItem(index) {
       this.cartItems.splice(index, 1);
       if (this.editingCartItemIndex === index) {
@@ -336,6 +420,7 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    // Valor de uma linha do carrinho (usado para mostrar e somar o total do pedido).
     cartItemLineTotal(item) {
       if (item.grams != null) return item.manualTotal ?? 0;
       const product = this.products.find(p => p.id === item.productId);
@@ -343,15 +428,18 @@ document.addEventListener('alpine:init', () => {
       return product.prices[this.paymentMethod] * item.qty;
     },
 
+    // Soma o valor de todos os itens do carrinho (total do pedido em edição/criação).
     orderTotal() {
       if (!this.paymentMethod) return 0;
       return this.cartItems.reduce((sum, item) => sum + this.cartItemLineTotal(item), 0);
     },
 
+    // Calcula o troco a devolver com base no valor informado para troco (pagamento em dinheiro).
     changeAmountLive() {
       return Math.max((this.changeFor ?? 0) - this.orderTotal(), 0);
     },
 
+    // Limpa o formulário de pedido (telefone, endereço, carrinho, pagamento etc.).
     resetForm() {
       this.phone = '';
       this.address = '';
@@ -364,12 +452,17 @@ document.addEventListener('alpine:init', () => {
       this.paymentMethod = '';
       this.changeFor = null;
       this.selectedProductId = '';
+      this.productPickerOpen = false;
+      this.productPickerQuery = '';
       this.phoneSuggestions = [];
       this.addressSuggestions = [];
       this.customerMatchStatus = null;
       this.phoneError = '';
     },
 
+    // ===== Abrir/editar/salvar formulário de pedido =====
+
+    // Abre o formulário zerado para criar um pedido novo.
     async openNewOrderForm() {
       this.resetForm();
       this.editingOrderId = null;
@@ -378,6 +471,7 @@ document.addEventListener('alpine:init', () => {
       this.activeProducts = await listActiveProducts();
     },
 
+    // Abre o formulário já preenchido com os dados de um pedido existente, para editar.
     async startEditOrder(order) {
       this.editingOrderId = order.id;
       this.phone = this.formatPhoneMask(order.customerPhone);
@@ -403,12 +497,16 @@ document.addEventListener('alpine:init', () => {
       this.showOrderForm = true;
     },
 
+    // Fecha o formulário de pedido sem salvar.
     closeOrderForm() {
       this.resetForm();
       this.editingOrderId = null;
       this.showOrderForm = false;
     },
 
+    // Valida o formulário (telefone, itens, produto ainda existe, pagamento,
+    // troco suficiente, endereço) e grava o pedido — cria um novo ou atualiza
+    // o que está em edição. Também salva/atualiza o cliente pelo telefone.
     async saveOrder() {
       const phoneDigits = this.phoneDigits();
       if (!isValidBrazilianPhone(phoneDigits)) {
@@ -470,6 +568,9 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    // ===== Lista de pedidos: busca, filtro, paginação, ordenação =====
+
+    // Recarrega a lista de pedidos do dia selecionado (e reaplica a busca, se houver).
     async refreshOrders() {
       this.todayOrders = await listOrdersForDay(this.selectedDate);
       if (this.orderSearchQuery.trim()) {
@@ -479,11 +580,14 @@ document.addEventListener('alpine:init', () => {
       this.selectedOrderIds = [];
     },
 
+    // Ao digitar na busca de pedidos.
     onOrderSearchInput(value) {
       this.orderSearchQuery = value;
       this.searchOrders();
     },
 
+    // Busca pedidos em TODO o histórico (não só no dia selecionado) por
+    // telefone ou endereço parecido com o termo digitado.
     async searchOrders() {
       const query = this.orderSearchQuery.trim();
       if (!query) {
@@ -503,25 +607,31 @@ document.addEventListener('alpine:init', () => {
       this.selectedOrderIds = [];
     },
 
+    // Limpa a busca e volta a mostrar os pedidos do dia selecionado.
     clearOrderSearch() {
       this.orderSearchQuery = '';
       this.orderSearchResults = [];
       this.orderPage = 1;
     },
 
+    // Lista base a ser exibida: resultado da busca se houver termo digitado,
+    // senão os pedidos do dia selecionado.
     currentOrders() {
       return this.orderSearchQuery.trim() ? this.orderSearchResults : this.todayOrders;
     },
 
+    // Formata "AAAA-MM-DD" como "DD/MM/AAAA" para exibir na tela.
     formatDateDisplay(isoDate) {
       const [y, m, d] = isoDate.split('-');
       return `${d}/${m}/${y}`;
     },
 
+    // Data de criação do pedido, formatada para exibição.
     formatOrderDate(order) {
       return new Date(order.createdAt).toLocaleDateString('pt-BR');
     },
 
+    // Avança/volta o dia mostrado na aba Pedidos do Dia.
     async shiftDate(deltaDays) {
       const [y, m, d] = this.selectedDate.split('-').map(Number);
       const date = new Date(y, m - 1, d);
@@ -530,6 +640,8 @@ document.addEventListener('alpine:init', () => {
       await this.refreshOrders();
     },
 
+    // Aplica o filtro de status (aba pendente/impresso/entregue/cancelado) e de
+    // forma de pagamento, e a ordenação (mais recente/mais antigo primeiro).
     filteredOrders() {
       const filtered = this.currentOrders()
         .filter(o => o.status === this.orderStatusTab)
@@ -537,15 +649,18 @@ document.addEventListener('alpine:init', () => {
       return this.orderSortDirection === 'asc' ? [...filtered].reverse() : filtered;
     },
 
+    // Soma o total de todos os pedidos que passaram pelo filtro atual.
     filteredTotal() {
       return this.filteredOrders().reduce((sum, o) => sum + o.total, 0);
     },
 
+    // Fatia a lista filtrada para mostrar só a página atual (paginação).
     visibleOrders() {
       const start = (this.orderPage - 1) * this.orderPageSize;
       return this.filteredOrders().slice(start, start + this.orderPageSize);
     },
 
+    // Quantidade total de páginas, de acordo com o filtro e o tamanho de página escolhido.
     totalOrderPages() {
       return Math.max(1, Math.ceil(this.filteredOrders().length / this.orderPageSize));
     },
@@ -558,26 +673,34 @@ document.addEventListener('alpine:init', () => {
       if (this.orderPage < this.totalOrderPages()) this.orderPage += 1;
     },
 
+    // Alterna entre mostrar os pedidos do mais novo ou do mais antigo primeiro.
     toggleOrderSort() {
       this.orderSortDirection = this.orderSortDirection === 'desc' ? 'asc' : 'desc';
       this.orderPage = 1;
     },
 
+    // Muda quantos pedidos aparecem por página.
     onOrderPageSizeChange(value) {
       this.orderPageSize = Number(value);
       this.orderPage = 1;
     },
 
+    // Volta para a primeira página quando um filtro (forma de pagamento) muda.
     onFilterChange() {
       this.orderPage = 1;
     },
 
+    // ===== Ações do pedido: marcar entregue, cancelar, reverter, excluir, imprimir =====
+
+    // Marca/desmarca um pedido na seleção em massa (usada para imprimir vários de uma vez).
     toggleOrderSelected(orderId) {
       this.selectedOrderIds = this.selectedOrderIds.includes(orderId)
         ? this.selectedOrderIds.filter(id => id !== orderId)
         : [...this.selectedOrderIds, orderId];
     },
 
+    // Imprime o recibo de cada pedido selecionado (via Bluetooth) e marca cada
+    // um como "impresso"; se a impressão falhar, o pedido continua pendente.
     async printSelectedOrders() {
       const ids = [...this.selectedOrderIds];
       let printed = 0;
@@ -608,6 +731,8 @@ document.addEventListener('alpine:init', () => {
       await this.refreshOrders();
     },
 
+    // Imprime o recibo de fechamento de caixa do dia mostrado no Histórico
+    // (totais por forma de pagamento, itens entregues, linha de assinatura).
     async printDailyClosing() {
       const dayOrders = await listOrdersForDay(this.historicoDate);
       if (dayOrders.length === 0) {
@@ -632,25 +757,31 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
+    // Marca o pedido como entregue.
     async markOrderDelivered(order) {
       await updateOrderStatus(order.id, 'entregue');
       await this.refreshOrders();
     },
 
+    // Cancela o pedido (fica visível na aba "Cancelado", gera entrada no Histórico).
     async cancelOrder(order) {
       await updateOrderStatus(order.id, 'cancelado');
       await this.refreshOrders();
     },
 
+    // Volta um pedido cancelado/entregue para pendente (gera entrada no Histórico).
     async revertOrderToPending(order) {
       await updateOrderStatus(order.id, 'pendente');
       await this.refreshOrders();
     },
 
+    // Abre/fecha o menu "..." de ações de um pedido na lista.
     toggleOrderMenu(orderId) {
       this.openOrderMenuId = this.openOrderMenuId === orderId ? null : orderId;
     },
 
+    // Exclui definitivamente um pedido (bloqueado para pedidos já entregues ou
+    // cancelados), após confirmação. Fica registrado no Histórico antes de sumir.
     async deleteOrder(order) {
       this.openOrderMenuId = null;
       if (order.status === 'entregue' || order.status === 'cancelado') {
@@ -665,14 +796,21 @@ document.addEventListener('alpine:init', () => {
       this.showToast('Pedido excluído.');
     },
 
+    // ===== Textos/labels de exibição e renderização do Histórico (auditoria) =====
+
+    // Nome exibido do produto (nome + marca, se tiver marca).
     productDisplayName(product) {
-      return product.brand ? `${product.name} ${product.brand}` : product.name;
+      return product.brand
+        ? `${product.name} ${product.brand}`
+        : product.name;
     },
 
+    // Texto secundário do produto na lista (marca e "inativo", se for o caso).
     productSubtitle(product) {
       return [product.brand, product.active ? null : 'inativo'].filter(Boolean).join(' · ');
     },
 
+    // Lista de textos "quantidade + nome do produto" para exibir os itens de um pedido.
     orderItemLabels(order) {
       return order.items.map(item => {
         const product = this.products.find(p => p.id === item.productId);
@@ -683,27 +821,36 @@ document.addEventListener('alpine:init', () => {
       });
     },
 
+    // Nome em português da forma de pagamento.
     paymentMethodLabel(method) {
       return { dinheiro: 'Dinheiro', pix: 'Pix', cartao: 'Cartão' }[method] ?? method;
     },
 
+    // Nome em português do status do pedido.
     orderStatusLabel(status) {
       return { pendente: 'Pendente', impresso: 'Impresso', entregue: 'Entregue', cancelado: 'Cancelado' }[status] ?? status;
     },
 
+    // Título da entrada no Histórico (ex.: "Editado", "Excluído", ou o novo status).
     auditActionLabel(entry) {
       if (entry.action === 'status') return this.orderStatusLabel(entry.toStatus);
       return { edit: 'Editado', delete: 'Excluído' }[entry.action] ?? entry.action;
     },
 
+    // Cor da bolinha da linha do tempo no Histórico, de acordo com o tipo de ação.
     auditDotClass(action) {
       return { edit: 'bg-blue-600', status: 'bg-purple-600', delete: 'bg-red-600' }[action] ?? 'bg-gray-400';
     },
 
+    // Horário (HH:MM) da entrada do Histórico.
     formatAuditTime(entry) {
       return new Date(entry.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     },
 
+    // Monta as linhas de texto que descrevem o que mudou numa edição/status/exclusão
+    // (pagamento, endereço, itens). Usa `entry.orderAfter` (estado gravado no
+    // momento exato da edição) quando existir; só cai no pedido atual como
+    // fallback para entradas antigas gravadas antes dessa correção.
     auditChangeLines(entry) {
       if (entry.action === 'status') {
         return [`${this.orderStatusLabel(entry.fromStatus)} → ${this.orderStatusLabel(entry.toStatus)}`];
@@ -728,6 +875,8 @@ document.addEventListener('alpine:init', () => {
       return lines.length > 0 ? lines : ['Dados editados'];
     },
 
+    // Compara os itens de antes e depois de uma edição e gera linhas "+ 2x Água"
+    // / "− 1x Água" mostrando o que foi adicionado/removido.
     auditItemsDiff(oldItems, newItems) {
       const totals = (items) => {
         const map = {};
@@ -762,6 +911,8 @@ document.addEventListener('alpine:init', () => {
       return lines;
     },
 
+    // Linha de valor da entrada do Histórico: "R$ X → R$ Y" se o total mudou
+    // nessa edição, senão só "R$ X" (mesma lógica de fallback do `auditChangeLines`).
     auditValueLine(entry) {
       if (entry.action === 'edit') {
         const current = entry.orderAfter ?? this.auditCurrentOrders[entry.orderId];
@@ -772,6 +923,10 @@ document.addEventListener('alpine:init', () => {
       return `R$ ${this.formatCurrency(entry.orderSnapshot.total)}`;
     },
 
+    // ===== Ícones SVG inline e classes de forma de pagamento =====
+
+    // Retorna o SVG de um ícone pelo nome (usado em vez de biblioteca de ícones
+    // externa, para o app funcionar 100% offline).
     icon(name, size = 16) {
       const paths = {
         add: { strokeWidth: 2.2, body: '<path d="M12 5v14M5 12h14"/>' },
@@ -782,6 +937,7 @@ document.addEventListener('alpine:init', () => {
         cartao: { strokeWidth: 2, body: '<rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>' },
         pix: { strokeWidth: 2, body: '<rect x="4" y="4" width="16" height="16" rx="5" transform="rotate(45 12 12)"/>' },
         chevronDown: { strokeWidth: 2, body: '<path d="m6 9 6 6 6-6"/>' },
+        check: { strokeWidth: 2.4, body: '<path d="M20 6 9 17l-5-5"/>' },
         chevronLeft: { strokeWidth: 2, body: '<path d="m15 18-6-6 6-6"/>' },
         chevronRight: { strokeWidth: 2, body: '<path d="m9 18 6-6-6-6"/>' },
         moreVertical: { strokeWidth: 2, body: '<circle cx="12" cy="5" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.8" fill="currentColor" stroke="none"/>' },
@@ -802,18 +958,22 @@ document.addEventListener('alpine:init', () => {
       return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${spec.strokeWidth}" style="display:inline;vertical-align:${valign}px">${spec.body}</svg>`;
     },
 
+    // Controla se a opção "vendido por peso (kg)" aparece no cadastro de produto.
     soldByWeightEnabled() {
       return window.APP_CONFIG?.features?.soldByWeight ?? true;
     },
 
+    // Cor da borda lateral do card de pedido, de acordo com a forma de pagamento.
     paymentMethodAccentClass(method) {
       return { dinheiro: 'border-l-green-600', pix: 'border-l-blue-600', cartao: 'border-l-purple-600' }[method] ?? 'border-l-gray-400';
     },
 
+    // Cor do texto de acordo com a forma de pagamento.
     paymentMethodTextClass(method) {
       return { dinheiro: 'text-green-700', pix: 'text-blue-700', cartao: 'text-purple-700' }[method] ?? 'text-gray-600';
     },
 
+    // Cor do "selo" (pill) de forma de pagamento.
     paymentMethodPillClass(method) {
       return {
         dinheiro: 'bg-green-50 text-green-700',
@@ -822,10 +982,14 @@ document.addEventListener('alpine:init', () => {
       }[method] ?? 'bg-gray-100 text-gray-700';
     },
 
+    // Estilo do botão de forma de pagamento no formulário (destacado se for o selecionado).
     paymentButtonClass(method) {
       return this.paymentMethod === method ? this.paymentMethodPillClass(method) : 'bg-gray-100 text-gray-600';
     },
 
+    // ===== CRUD do formulário de produto =====
+
+    // Limpa o formulário de produto.
     resetProductForm() {
       this.productForm = {
         id: null, name: '', brand: '',
@@ -837,11 +1001,13 @@ document.addEventListener('alpine:init', () => {
       this.productFormError = '';
     },
 
+    // Abre o formulário zerado para cadastrar um produto novo.
     openNewProductForm() {
       this.resetProductForm();
       this.showProductForm = true;
     },
 
+    // Abre o formulário já preenchido com os dados de um produto existente, para editar.
     startEditProduct(product) {
       this.productForm = {
         id: product.id,
@@ -859,6 +1025,8 @@ document.addEventListener('alpine:init', () => {
       this.showProductForm = true;
     },
 
+    // Ao digitar o preço em dinheiro: replica esse valor para Pix/Cartão também,
+    // a menos que o usuário já tenha digitado um preço diferente para eles.
     onPriceDinheiroInput(value) {
       const num = value === '' ? null : Number(value);
       this.productForm.priceDinheiro = num;
@@ -866,21 +1034,26 @@ document.addEventListener('alpine:init', () => {
       if (this.priceSyncCartao) this.productForm.priceCartao = num;
     },
 
+    // Preço específico do Pix (para de seguir o preço do dinheiro automaticamente).
     onPricePixInput(value) {
       this.productForm.pricePix = value === '' ? null : Number(value);
       this.priceSyncPix = false;
     },
 
+    // Preço específico do Cartão (para de seguir o preço do dinheiro automaticamente).
     onPriceCartaoInput(value) {
       this.productForm.priceCartao = value === '' ? null : Number(value);
       this.priceSyncCartao = false;
     },
 
+    // Fecha o formulário de produto sem salvar.
     closeProductForm() {
       this.resetProductForm();
       this.showProductForm = false;
     },
 
+    // Valida (nome preenchido, preços válidos) e salva o produto — cria um novo
+    // ou atualiza o que está em edição.
     async saveProductForm() {
       if (!this.productForm.name) {
         this.productFormError = 'Preencha o nome.';
@@ -924,10 +1097,12 @@ document.addEventListener('alpine:init', () => {
       this.closeProductForm();
     },
 
+    // Quantidade de produtos ativos (exibida na lista de produtos).
     activeProductCount() {
       return this.products.filter(p => p.active).length;
     },
 
+    // Lista de produtos filtrada pela busca por nome e pelo filtro ativos/todos.
     filteredProductList() {
       const query = this.productSearch.trim().toLowerCase();
       return this.products
@@ -935,6 +1110,7 @@ document.addEventListener('alpine:init', () => {
         .filter(p => !query || this.productDisplayName(p).toLowerCase().includes(query));
     },
 
+    // Ativa/desativa um produto (não some da tela de gerenciar, só some do novo pedido).
     async toggleProductActive(product) {
       await setProductActive(product.id, !product.active);
       this.products = await listProducts();
