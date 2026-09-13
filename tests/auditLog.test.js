@@ -87,6 +87,46 @@ describe('audit log', () => {
     expect(entries[0].orderSnapshot.address).toBe('Rua das Flores, 55');
   });
 
+  it('logs an edit with the resulting order state as orderAfter', async () => {
+    const order = await createTestOrder();
+    await updateOrder(order.id, {
+      customerPhone: order.customerPhone,
+      address: order.address,
+      items: [{ productId: 'agua-10', qty: 2 }],
+      paymentMethod: 'pix'
+    });
+    const entries = await logEntriesFor(order.id);
+    expect(entries[0].orderAfter.total).toBe(18);
+    expect(entries[0].orderAfter.items).toEqual([{ productId: 'agua-10', qty: 2 }]);
+  });
+
+  it('an earlier edit entry keeps its own before/after totals unchanged after a later edit', async () => {
+    const order = await createTestOrder(); // total: 9 (1x agua-10 pix)
+    await updateOrder(order.id, {
+      customerPhone: order.customerPhone,
+      address: order.address,
+      items: [{ productId: 'agua-10', qty: 2 }], // total: 18
+      paymentMethod: 'pix'
+    });
+    await updateOrder(order.id, {
+      customerPhone: order.customerPhone,
+      address: order.address,
+      items: [{ productId: 'agua-10', qty: 1 }], // total: 9 again, but a different edit
+      paymentMethod: 'pix'
+    });
+
+    const entries = await logEntriesFor(order.id);
+    expect(entries.length).toBe(2);
+    const firstEdit = entries.find(e => e.orderSnapshot.total === 9 && e.orderAfter.total === 18);
+    const secondEdit = entries.find(e => e.orderSnapshot.total === 18 && e.orderAfter.total === 9);
+
+    // The first edit's before/after must stay 9 -> 18, unaffected by the second edit.
+    expect(firstEdit).toBeTruthy();
+
+    // The second edit's before/after is 18 -> 9.
+    expect(secondEdit).toBeTruthy();
+  });
+
   it('logs a deletion with the order snapshot, and the order no longer exists afterwards', async () => {
     const order = await createTestOrder();
     await removeOrder(order.id);

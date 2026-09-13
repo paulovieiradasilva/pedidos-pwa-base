@@ -711,7 +711,7 @@ document.addEventListener('alpine:init', () => {
       if (entry.action === 'delete') {
         return [];
       }
-      const current = this.auditCurrentOrders[entry.orderId];
+      const current = entry.orderAfter ?? this.auditCurrentOrders[entry.orderId];
       if (!current) return ['Dados editados'];
       const lines = [];
       if (current.paymentMethod !== entry.orderSnapshot.paymentMethod) {
@@ -764,7 +764,7 @@ document.addEventListener('alpine:init', () => {
 
     auditValueLine(entry) {
       if (entry.action === 'edit') {
-        const current = this.auditCurrentOrders[entry.orderId];
+        const current = entry.orderAfter ?? this.auditCurrentOrders[entry.orderId];
         if (current && current.total !== entry.orderSnapshot.total) {
           return `R$ ${this.formatCurrency(entry.orderSnapshot.total)} → R$ ${this.formatCurrency(current.total)}`;
         }

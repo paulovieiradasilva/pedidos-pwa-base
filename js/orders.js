@@ -51,7 +51,7 @@ export async function createOrder(input) {
 export async function updateOrder(id, input) {
   const order = await get('orders', id);
   if (!order) return null;
-  await logOrderChange('edit', order);
+  const before = { ...order };
 
   const products = await listProducts();
   const productById = Object.fromEntries(products.map(p => [p.id, p]));
@@ -70,6 +70,7 @@ export async function updateOrder(id, input) {
   order.changeAmount = changeAmount;
   order.status = 'pendente';
 
+  await logOrderChange('edit', before, { orderAfter: { ...order } });
   await put('orders', order);
   return order;
 }
