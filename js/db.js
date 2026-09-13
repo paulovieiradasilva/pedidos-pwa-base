@@ -66,3 +66,17 @@ export async function remove(storeName, key) {
     tx.onerror = () => reject(tx.error);
   });
 }
+
+export async function deleteDatabase() {
+  if (dbPromise) {
+    const db = await dbPromise;
+    db.close();
+    dbPromise = null;
+  }
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.deleteDatabase(DB_NAME);
+    request.onsuccess = () => resolve();
+    request.onerror = () => reject(request.error);
+    request.onblocked = () => resolve();
+  });
+}

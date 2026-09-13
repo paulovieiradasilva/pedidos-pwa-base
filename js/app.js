@@ -3,6 +3,7 @@ import { createOrder, listAllOrders, listOrdersForDay, localDateString, removeOr
 import { buildClosingReceiptBytes, buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
 import { listActiveProducts, listProducts, saveProduct, seedProductsIfEmpty, setProductActive } from './products.js';
 import { listAuditLog } from './auditLog.js';
+import { deleteDatabase } from './db.js';
 
 const VALID_DDDS = new Set([
   '11', '12', '13', '14', '15', '16', '17', '18', '19',
@@ -81,6 +82,7 @@ document.addEventListener('alpine:init', () => {
     auditLog: [],
     auditCurrentOrders: {},
     historicoDate: localDateString(new Date()),
+    historicoMenuOpen: false,
 
     productForm: {
       id: null, name: '', brand: '',
@@ -135,6 +137,23 @@ document.addEventListener('alpine:init', () => {
       const date = new Date(y, m - 1, d);
       date.setDate(date.getDate() + deltaDays);
       this.historicoDate = localDateString(date);
+    },
+
+    devModeEnabled() {
+      return window.APP_CONFIG?.features?.devMode ?? false;
+    },
+
+    toggleHistoricoMenu() {
+      this.historicoMenuOpen = !this.historicoMenuOpen;
+    },
+
+    async clearDatabase() {
+      this.historicoMenuOpen = false;
+      if (!confirm('Limpar todos os dados do app? Isso apaga pedidos, clientes, produtos e histórico definitivamente. Essa ação não pode ser desfeita.')) {
+        return;
+      }
+      await deleteDatabase();
+      window.location.reload();
     },
 
     historicoEntriesForDay() {

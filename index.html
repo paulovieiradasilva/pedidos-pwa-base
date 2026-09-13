@@ -60,6 +60,35 @@
         <span x-html="icon('history', 22)"></span>
         <span class="text-xs">Histórico</span>
       </button>
+      <template x-if="devModeEnabled()">
+        <span class="shrink-0 pb-3 flex items-center">
+          <span class="relative">
+            <button
+              type="button"
+              class="text-gray-400 w-8 h-8 flex items-center justify-center"
+              aria-label="Mais opções"
+              @click.stop="toggleHistoricoMenu()"
+            >
+              <span class="pointer-events-none" x-html="icon('moreVertical', 18)"></span>
+            </button>
+            <template x-if="historicoMenuOpen">
+              <div
+                class="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-md z-20 overflow-hidden"
+                @click.outside="historicoMenuOpen = false"
+              >
+                <button
+                  type="button"
+                  class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 whitespace-nowrap w-full"
+                  @click="clearDatabase()"
+                >
+                  <span class="pointer-events-none" x-html="icon('trash', 16)"></span>
+                  Limpar dados
+                </button>
+              </div>
+            </template>
+          </span>
+        </span>
+      </template>
     </nav>
 
     <template x-if="currentView === 'produtos'">
@@ -1033,7 +1062,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./service-worker.js?v=34")
+          .register("./service-worker.js?v=37")
           .then((reg) => {
             reg.update();
             document.addEventListener("visibilitychange", () => {
