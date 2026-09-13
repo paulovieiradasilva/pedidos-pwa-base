@@ -71,7 +71,10 @@
               aria-label="Mais opções"
               @click.stop="toggleHistoricoMenu()"
             >
-              <span class="pointer-events-none" x-html="icon('moreVertical', 18)"></span>
+              <span
+                class="pointer-events-none"
+                x-html="icon('moreVertical', 18)"
+              ></span>
             </button>
             <template x-if="historicoMenuOpen">
               <div
@@ -83,7 +86,10 @@
                   class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 whitespace-nowrap w-full"
                   @click="clearDatabase()"
                 >
-                  <span class="pointer-events-none" x-html="icon('trash', 16)"></span>
+                  <span
+                    class="pointer-events-none"
+                    x-html="icon('trash', 16)"
+                  ></span>
                   Limpar dados
                 </button>
               </div>
@@ -442,6 +448,7 @@
                 <button
                   type="button"
                   class="border rounded-lg p-2 w-full flex items-center justify-between gap-2 bg-white"
+                  x-ref="selectOpen"
                   @click.stop="toggleProductPicker()"
                 >
                   <span
@@ -466,11 +473,14 @@
                         placeholder="Buscar produto"
                         class="border rounded-lg p-2 w-full text-sm"
                         x-model="productPickerQuery"
-                        autofocus
+                        x-init="$nextTick(() => $el.focus())"
                       />
                     </div>
                     <div class="max-h-56 overflow-y-auto">
-                      <template x-for="p in filteredActiveProducts()" :key="p.id">
+                      <template
+                        x-for="p in filteredActiveProducts()"
+                        :key="p.id"
+                      >
                         <button
                           type="button"
                           class="flex items-center justify-between gap-2 w-full text-left px-3 py-2 border-b last:border-b-0"
@@ -835,7 +845,10 @@
                 :aria-label="orderSortDirection === 'desc' ? 'Mostrando mais recentes primeiro, tocar para inverter' : 'Mostrando mais antigos primeiro, tocar para inverter'"
                 @click="toggleOrderSort()"
               >
-                <span class="pointer-events-none" x-html="icon('sort', 16)"></span>
+                <span
+                  class="pointer-events-none"
+                  x-html="icon('sort', 16)"
+                ></span>
               </button>
             </div>
 
@@ -1064,12 +1077,16 @@
         </div>
 
         <template x-if="historicoEntriesForDay().length === 0">
-          <p class="text-sm text-gray-600">Nenhuma alteração registrada nesse dia.</p>
+          <p class="text-sm text-gray-600">
+            Nenhuma alteração registrada nesse dia.
+          </p>
         </template>
 
         <div class="relative pl-6">
           <template x-if="historicoEntriesForDay().length > 0">
-            <div class="absolute left-[6px] top-1 bottom-1 w-0.5 bg-gray-200"></div>
+            <div
+              class="absolute left-[6px] top-1 bottom-1 w-0.5 bg-gray-200"
+            ></div>
           </template>
           <template x-for="entry in historicoEntriesForDay()" :key="entry.id">
             <div class="relative pb-5 last:pb-0">
@@ -1089,7 +1106,10 @@
                 x-text="formatPhoneMask(entry.orderSnapshot.customerPhone)"
               ></p>
               <template x-if="entry.orderSnapshot.address">
-                <p class="text-xs text-gray-500" x-text="entry.orderSnapshot.address"></p>
+                <p
+                  class="text-xs text-gray-500"
+                  x-text="entry.orderSnapshot.address"
+                ></p>
               </template>
               <template x-if="entry.action === 'delete'">
                 <p

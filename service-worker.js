@@ -6,7 +6,7 @@
 // arquivo em index.html, ambos para o MESMO número. Se só um dos dois for
 // aumentado, o celular do usuário pode continuar mostrando a versão antiga
 // (já aconteceu antes neste projeto).
-const CACHE_NAME = 'pedidos-cache-v40';
+const CACHE_NAME = 'pedidos-cache-v41';
 
 // Lista de arquivos que ficam salvos em cache para o app funcionar offline.
 const ASSETS = [
