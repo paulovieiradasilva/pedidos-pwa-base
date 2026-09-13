@@ -1,14 +1,16 @@
 // Service Worker: faz o app funcionar como PWA (funcionar offline e poder ser
 // "instalado" no celular). Guarda uma cópia dos arquivos do app em cache.
 //
-// REGRA IMPORTANTE: toda vez que qualquer arquivo do app mudar, é preciso
-// aumentar o número aqui (CACHE_NAME) E o "?v=N" do <script> que registra este
-// arquivo em index.html, ambos para o MESMO número. Se só um dos dois for
-// aumentado, o celular do usuário pode continuar mostrando a versão antiga
-// (já aconteceu antes neste projeto).
-const CACHE_NAME = 'pedidos-cache-v41';
+// Estratégia: network-first (tenta a rede primeiro, cai pro cache só se
+// estiver offline) — por causa disso, uma mudança de código chega pro
+// usuário assim que ele reabre o app com internet, sem precisar aumentar
+// CACHE_NAME nem o "?v=N" do <script> em index.html a cada deploy. Só
+// aumente esse número se precisar forçar a limpeza de tudo que já está em
+// cache (ex.: renomeou/removeu arquivos da lista ASSETS abaixo).
+const CACHE_NAME = 'pedidos-cache-v42';
 
-// Lista de arquivos que ficam salvos em cache para o app funcionar offline.
+// Lista de arquivos pré-carregados em cache na primeira visita, pra já
+// funcionar offline mesmo antes de qualquer requisição bem-sucedida.
 const ASSETS = [
   './',
   './index.html',
@@ -46,10 +48,18 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(clients.claim());
 });
 
-// Toda requisição de arquivo: responde com a versão em cache se existir,
-// senão busca na rede (é isso que permite o app abrir sem internet).
+// Toda requisição de arquivo: tenta a rede primeiro (pra sempre pegar a
+// versão mais nova quando tem internet) e guarda uma cópia da resposta em
+// cache; só usa a cópia em cache se a rede falhar (app offline).
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
+    fetch(event.request)
+      .then((response) => {
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

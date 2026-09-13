@@ -45,14 +45,14 @@ Após publicar a aplicação em produção (GitHub Pages ou qualquer servidor we
    git push
    ```
 
-3. **IMPORTANTE — incremente 2 números antes de todo deploy:**
-   - `CACHE_NAME` no topo de `service-worker.js` (ex.: `'pedidos-cache-v4'` → `'pedidos-cache-v5'`). O service worker usa cache-first e só percebe arquivos novos quando o nome do cache muda.
-   - `?v=N` na chamada `navigator.serviceWorker.register("./service-worker.js?v=N")`, no `<script>` no fim de `index.html` (ex.: `?v=4` → `?v=5`). **Esse é o passo que mais importa em hosts sem controle de cache HTTP (GitHub Pages não deixa customizar isso, ao contrário do Netlify)**: o GitHub Pages sempre serve `service-worker.js` com `cache-control: max-age=600`, e em alguns navegadores/Android isso faz o `registration.update()` reaproveitar uma cópia em cache do arquivo mesmo quando ele mudou, achando que nada é diferente. Mudar a URL (`?v=N`) força buscar um arquivo "novo" que o navegador nunca viu, contornando esse cache por completo.
+3. **Reabra a aplicação no celular com internet:**
+   O service worker usa estratégia **network-first** (tenta a rede antes do cache — veja `service-worker.js`), então uma mudança normal em `index.html`/`js/*.js` chega pro usuário sozinha, assim que ele reabre o app com internet. Não precisa bumpar nenhum número nem reinstalar o app pra isso.
 
-   Se esquecer qualquer um dos dois, o app **pode continuar rodando a versão antiga indefinidamente**, mesmo com internet e mesmo com o mecanismo de auto-atualização.
+   **Exceção — só quando o próprio `service-worker.js` mudar** (a lógica de cache em si, não o app): aí sim é preciso incrementar 2 números juntos, pro mesmo valor:
+   - `CACHE_NAME` no topo de `service-worker.js` (ex.: `'pedidos-cache-v41'` → `'pedidos-cache-v42'`).
+   - `?v=N` na chamada `navigator.serviceWorker.register("./service-worker.js?v=N")`, no `<script>` no fim de `index.html` (ex.: `?v=41` → `?v=42`). **Esse é o passo que mais importa em hosts sem controle de cache HTTP (GitHub Pages não deixa customizar isso, ao contrário do Netlify)**: o GitHub Pages sempre serve `service-worker.js` com `cache-control: max-age=600`, e em alguns navegadores/Android isso faz o `registration.update()` reaproveitar uma cópia em cache do arquivo mesmo quando ele mudou, achando que nada é diferente. Mudar a URL (`?v=N`) força buscar um arquivo "novo" que o navegador nunca viu, contornando esse cache por completo.
 
-4. **Reabra a aplicação no celular com internet:**
-   Como o novo `CACHE_NAME`/`?v=N` força a reinstalação do service worker, ele assume o controle assim que reabre o app (`skipWaiting`/`clients.claim`) e a página recarrega sozinha com os arquivos atualizados. Não precisa reinstalar o app — só abrir de novo com internet.
+   Se esquecer de bumpar nessa exceção específica, o navegador pode demorar até 10 minutos pra perceber que o `service-worker.js` em si mudou — mas o conteúdo do app (`index.html`/`js/*.js`) continua sempre atualizado por causa do network-first.
 
 ## Configurando a impressora
 

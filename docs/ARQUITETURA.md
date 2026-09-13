@@ -50,9 +50,13 @@ dali). Existem 4 "gavetas" (stores):
 
 ## Lembrete de deploy
 
-Toda vez que qualquer arquivo do app mudar, é preciso aumentar, para o
-**mesmo número**, tanto `CACHE_NAME` (em `service-worker.js`) quanto o
-`?v=N` do `<script>` que registra o service worker (em `index.html`). Se só
-um dos dois for atualizado, o celular do usuário pode continuar mostrando a
-versão antiga do app mesmo com internet. Detalhes completos em
-[README.md](../README.md#atualização-após-deploy).
+O service worker usa estratégia **network-first** (tenta a rede antes do
+cache), então uma mudança normal em `index.html`/`js/*.js` chega pro dono
+sozinha, assim que ele reabre o app com internet — não precisa bumpar nada.
+
+**Exceção:** se o próprio `service-worker.js` mudar (a lógica de cache em
+si), aí sim é preciso aumentar, para o **mesmo número**, tanto `CACHE_NAME`
+(em `service-worker.js`) quanto o `?v=N` do `<script>` que registra o
+service worker (em `index.html`) — senão o navegador pode demorar até 10
+minutos pra perceber que esse arquivo específico mudou. Detalhes completos
+em [README.md](../README.md#atualização-após-deploy).

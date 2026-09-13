@@ -1150,13 +1150,17 @@
     </div>
 
     <!-- ===== REGISTRO DO SERVICE WORKER (deixa o app funcionar offline/instalável) =====
-         O "?v=40" aqui e o CACHE_NAME em service-worker.js sempre têm que ser
-         aumentados juntos, para o MESMO número, a cada mudança no app — senão o
-         celular do usuário pode continuar mostrando uma versão antiga. -->
+         O service worker usa estratégia network-first (tenta a rede antes do
+         cache), então uma mudança normal em index.html/js/*.js já chega pro
+         usuário sozinha, sem precisar bumpar nada aqui. O "?v=42" abaixo e o
+         CACHE_NAME em service-worker.js só precisam ser aumentados juntos
+         quando o PRÓPRIO service-worker.js mudar (ex.: essa estratégia de
+         cache mudar de novo) — é o que garante que o navegador não continue
+         usando uma cópia antiga do arquivo do service worker em si. -->
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./service-worker.js?v=40")
+          .register("./service-worker.js?v=42")
           .then((reg) => {
             reg.update();
             document.addEventListener("visibilitychange", () => {
