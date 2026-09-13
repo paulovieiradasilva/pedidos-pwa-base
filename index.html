@@ -983,8 +983,8 @@
                 class="text-xs font-semibold text-gray-500"
                 x-text="formatAuditTime(entry) + ' · ' + auditActionLabel(entry)"
               ></p>
-              <template x-if="auditChangeSummary(entry)">
-                <p class="text-sm mt-0.5" x-text="auditChangeSummary(entry)"></p>
+              <template x-for="line in auditChangeLines(entry)" :key="line">
+                <p class="text-sm mt-0.5" x-text="line"></p>
               </template>
               <p
                 class="text-xs text-gray-500 mt-0.5"
@@ -1033,7 +1033,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./service-worker.js?v=32")
+          .register("./service-worker.js?v=33")
           .then((reg) => {
             reg.update();
             document.addEventListener("visibilitychange", () => {

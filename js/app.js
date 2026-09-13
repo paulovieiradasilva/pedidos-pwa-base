@@ -685,26 +685,62 @@ document.addEventListener('alpine:init', () => {
       return new Date(entry.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     },
 
-    auditChangeSummary(entry) {
+    auditChangeLines(entry) {
       if (entry.action === 'status') {
-        return `${this.orderStatusLabel(entry.fromStatus)} → ${this.orderStatusLabel(entry.toStatus)}`;
+        return [`${this.orderStatusLabel(entry.fromStatus)} → ${this.orderStatusLabel(entry.toStatus)}`];
       }
       if (entry.action === 'delete') {
-        return null;
+        return [];
       }
       const current = this.auditCurrentOrders[entry.orderId];
-      if (!current) return 'Dados editados';
-      const changes = [];
+      if (!current) return ['Dados editados'];
+      const lines = [];
       if (current.paymentMethod !== entry.orderSnapshot.paymentMethod) {
-        changes.push(`Pagamento: ${this.paymentMethodLabel(entry.orderSnapshot.paymentMethod)} → ${this.paymentMethodLabel(current.paymentMethod)}`);
+        lines.push(`Pagamento: ${this.paymentMethodLabel(entry.orderSnapshot.paymentMethod)} → ${this.paymentMethodLabel(current.paymentMethod)}`);
       }
       if (current.address !== entry.orderSnapshot.address) {
-        changes.push('Endereço alterado');
+        lines.push('Endereço alterado');
       }
-      if (JSON.stringify(current.items) !== JSON.stringify(entry.orderSnapshot.items)) {
-        changes.push('Itens alterados');
+      const itemDiffLines = this.auditItemsDiff(entry.orderSnapshot.items, current.items);
+      if (itemDiffLines.length > 0) {
+        lines.push('Itens alterados:');
+        lines.push(...itemDiffLines);
       }
-      return changes.length > 0 ? changes.join(' · ') : 'Dados editados';
+      return lines.length > 0 ? lines : ['Dados editados'];
+    },
+
+    auditItemsDiff(oldItems, newItems) {
+      const totals = (items) => {
+        const map = {};
+        for (const item of items) {
+          if (!map[item.productId]) map[item.productId] = { qty: 0, grams: 0 };
+          if (item.grams != null) map[item.productId].grams += item.grams;
+          else map[item.productId].qty += item.qty ?? 0;
+        }
+        return map;
+      };
+      const before = totals(oldItems);
+      const after = totals(newItems);
+      const productIds = new Set([...Object.keys(before), ...Object.keys(after)]);
+
+      const lines = [];
+      for (const id of productIds) {
+        const b = before[id] ?? { qty: 0, grams: 0 };
+        const a = after[id] ?? { qty: 0, grams: 0 };
+        const product = this.products.find(p => p.id === id);
+        const label = product ? this.productDisplayName(product) : 'Produto removido';
+
+        const qtyDelta = a.qty - b.qty;
+        if (qtyDelta !== 0) {
+          lines.push(`${qtyDelta > 0 ? '+' : '−'} ${Math.abs(qtyDelta)}x ${label}`);
+        }
+        const gramsDelta = a.grams - b.grams;
+        if (gramsDelta !== 0) {
+          const kg = parseFloat((Math.abs(gramsDelta) / 1000).toFixed(3));
+          lines.push(`${gramsDelta > 0 ? '+' : '−'} ${kg}kg ${label}`);
+        }
+      }
+      return lines;
     },
 
     icon(name, size = 16) {
