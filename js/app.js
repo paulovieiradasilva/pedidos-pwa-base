@@ -431,7 +431,7 @@ document.addEventListener('alpine:init', () => {
       if (item.grams != null) {
         this.weightGrams = item.grams;
         this.weightManualTotal = item.manualTotal;
-        this.weightTotalTouched = true;
+        this.weightTotalTouched = false;
         this.qty = null;
       } else {
         this.qty = item.qty;
