@@ -310,11 +310,20 @@ document.addEventListener('alpine:init', () => {
       this.productPickerQuery = '';
     },
 
-    // Escolhe um produto na lista, fecha ela e limpa a busca.
+    // Escolhe um produto na lista, fecha ela e limpa a busca. Se o produto for
+    // vendido por peso e já tiver gramas digitadas (e o usuário não tiver
+    // sobrescrito o valor manualmente), recalcula o total com o preço/kg do
+    // produto recém-escolhido — senão ficava com o valor calculado pro produto
+    // anterior.
     chooseOrderProduct(productId) {
       this.selectedProductId = productId;
       this.productPickerOpen = false;
       this.productPickerQuery = '';
+      const product = this.selectedNewOrderProduct();
+      if (product?.soldByWeight && this.weightGrams != null) {
+        this.weightTotalTouched = false;
+        this.weightManualTotal = Math.round(product.pricePerKg * (this.weightGrams / 1000) * 100) / 100;
+      }
     },
 
     // Lista de produtos ativos filtrada pela busca do seletor (nome ou marca).
@@ -333,7 +342,7 @@ document.addEventListener('alpine:init', () => {
       this.weightGrams = value === '' ? null : Number(value);
       const product = this.selectedNewOrderProduct();
       if (!this.weightTotalTouched && product && this.weightGrams != null) {
-        this.weightManualTotal = product.pricePerKg * (this.weightGrams / 1000);
+        this.weightManualTotal = Math.round(product.pricePerKg * (this.weightGrams / 1000) * 100) / 100;
       }
     },
 
