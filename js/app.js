@@ -356,14 +356,16 @@ document.addEventListener('alpine:init', () => {
       );
     },
 
-    // Ao digitar o peso (gramas) de um produto vendido a granel: já calcula o
-    // valor total sugerido (peso x preço/kg), a menos que o usuário já tenha
-    // digitado um valor manualmente.
+    // Ao digitar o peso (gramas) de um produto vendido a granel: sempre
+    // recalcula o valor total (peso x preço/kg) — mudar a quantidade é como
+    // a pessoa pede um novo cálculo, mesmo que tenha digitado um valor
+    // manual antes. Um valor manual só "gruda" enquanto as gramas não mudam.
     onWeightGramsInput(value) {
       this.weightGrams = value === '' ? null : Number(value);
       const product = this.selectedNewOrderProduct();
-      if (!this.weightTotalTouched && product && this.weightGrams != null) {
+      if (product && this.weightGrams != null) {
         this.weightManualTotal = Math.round(product.pricePerKg * (this.weightGrams / 1000) * 100) / 100;
+        this.weightTotalTouched = false;
       }
     },
 
