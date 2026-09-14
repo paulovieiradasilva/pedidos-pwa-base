@@ -1134,10 +1134,10 @@ document.addEventListener('alpine:init', () => {
 
     // Lista de produtos filtrada pela busca por nome e pelo filtro ativos/todos.
     filteredProductList() {
-      const query = this.productSearch.trim().toLowerCase();
+      const query = this.normalizeSearchText(this.productSearch);
       return this.products
         .filter(p => this.productFilter === 'all' || p.active)
-        .filter(p => !query || this.productDisplayName(p).toLowerCase().includes(query));
+        .filter(p => !query || this.normalizeSearchText(this.productDisplayName(p)).includes(query));
     },
 
     // Ativa/desativa um produto (não some da tela de gerenciar, só some do novo pedido).
