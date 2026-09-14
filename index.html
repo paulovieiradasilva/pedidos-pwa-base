@@ -31,7 +31,10 @@
 
   <body
     class="bg-gray-50 px-4 max-w-md mx-auto"
-    style="padding-top: max(2.75rem, calc(env(safe-area-inset-top) + 1.5rem)); padding-bottom: calc(7.5rem + env(safe-area-inset-bottom))"
+    style="
+      padding-top: max(2.75rem, calc(env(safe-area-inset-top) + 1.5rem));
+      padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+    "
     x-data="pedidosApp"
     x-init="init()"
   >
@@ -45,19 +48,11 @@
          indicador de gestos do iPhone, que essa variável cobre bem). -->
     <nav
       class="fixed inset-x-0 bottom-0 z-30 bg-white border-t border-gray-200 max-w-md mx-auto"
-      style="padding-bottom: max(1rem, env(safe-area-inset-bottom))"
+      style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom))"
     >
-      <!-- Versão do app: fica fixa aqui (não lá embaixo da rolagem) pra estar
-           sempre visível, sem precisar rolar até o fim de cada aba. -->
-      <template x-if="appVersionInfo">
-        <p
-          class="text-center text-[10px] text-gray-300 pt-1.5"
-          x-text="appVersionInfo"
-        ></p>
-      </template>
       <div class="flex">
         <button
-          class="flex-1 pt-2 pb-2 flex flex-col items-center gap-1"
+          class="flex-1 pt-1.5 pb-1 flex flex-col items-center gap-1"
           :class="currentView === 'pedidosDoDia' ? 'font-semibold text-gray-900' : 'text-gray-400'"
           @click="setView('pedidosDoDia')"
         >
@@ -65,7 +60,7 @@
           <span class="text-xs">Pedidos</span>
         </button>
         <button
-          class="flex-1 pt-2 pb-2 flex flex-col items-center gap-1"
+          class="flex-1 pt-1.5 pb-1 flex flex-col items-center gap-1"
           :class="currentView === 'produtos' ? 'font-semibold text-gray-900' : 'text-gray-400'"
           @click="setView('produtos')"
         >
@@ -73,7 +68,7 @@
           <span class="text-xs">Produtos</span>
         </button>
         <button
-          class="flex-1 pt-2 pb-2 flex flex-col items-center gap-1"
+          class="flex-1 pt-1.5 pb-1 flex flex-col items-center gap-1"
           :class="currentView === 'historico' ? 'font-semibold text-gray-900' : 'text-gray-400'"
           @click="setView('historico')"
         >
@@ -82,7 +77,7 @@
         </button>
         <!-- Menu "..." de desenvolvedor (Limpar dados) — só aparece com config.js features.devMode = true -->
         <template x-if="devModeEnabled()">
-          <span class="shrink-0 pt-2 pb-2 flex items-center">
+          <span class="shrink-0 pt-1.5 pb-1 flex items-center">
             <span class="relative">
               <button
                 type="button"
@@ -117,6 +112,14 @@
           </span>
         </template>
       </div>
+      <!-- Versão do app: fica fixa aqui (não lá embaixo da rolagem) pra estar
+           sempre visível, sem precisar rolar até o fim de cada aba. -->
+      <template x-if="appVersionInfo">
+        <p
+          class="text-center text-[10px] text-gray-300 pt-0.5"
+          x-text="appVersionInfo"
+        ></p>
+      </template>
     </nav>
 
     <!-- ===== ABA: PRODUTOS ===== -->
