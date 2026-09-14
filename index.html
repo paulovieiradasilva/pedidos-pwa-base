@@ -33,23 +33,29 @@
     class="bg-gray-50 px-4 max-w-md mx-auto"
     style="
       padding-top: max(2.75rem, calc(env(safe-area-inset-top) + 1.5rem));
-      padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+      padding-bottom: calc(6rem + env(safe-area-inset-bottom));
     "
     x-data="pedidosApp"
     x-init="init()"
   >
     <!-- ===== NAVEGAÇÃO PRINCIPAL (abas Pedidos / Produtos / Histórico) =====
-         Fixa no rodapé (mais fácil de alcançar com o polegar no celular) —
-         "fixed" tira do fluxo normal, então a posição dela na página não
-         depende de onde esse bloco está no HTML, só do CSS abaixo. O
-         "max(1rem, ...)" no padding de baixo garante uma folga mínima mesmo
-         em celular Android com barra de navegação por botões, que às vezes
-         não é reportada em env(safe-area-inset-bottom) (diferente do
-         indicador de gestos do iPhone, que essa variável cobre bem). -->
-    <nav
-      class="fixed inset-x-0 bottom-0 z-30 bg-white border-t border-gray-200 max-w-md mx-auto"
-      style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom))"
-    >
+         Grudado com a versão do app num wrapper fixo no rodapé (mais fácil
+         de alcançar com o polegar no celular) — "fixed" tira do fluxo
+         normal, então a posição desse bloco na página não depende de onde
+         ele está no HTML, só do CSS abaixo. -->
+    <div class="fixed inset-x-0 bottom-0 z-30 max-w-md mx-auto">
+      <!-- Versão do app: fica na área cinza, acima do fundo branco da nav,
+           sempre visível sem precisar rolar até o fim de cada aba. -->
+      <template x-if="appVersionInfo">
+        <p
+          class="text-center text-[10px] text-gray-300 pb-1"
+          x-text="appVersionInfo"
+        ></p>
+      </template>
+      <nav
+        class="bg-white border-t border-gray-200 pt-1"
+        style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom))"
+      >
       <div class="flex">
         <button
           class="flex-1 pt-1.5 pb-1 flex flex-col items-center gap-1"
@@ -112,15 +118,8 @@
           </span>
         </template>
       </div>
-      <!-- Versão do app: fica fixa aqui (não lá embaixo da rolagem) pra estar
-           sempre visível, sem precisar rolar até o fim de cada aba. -->
-      <template x-if="appVersionInfo">
-        <p
-          class="text-center text-[10px] text-gray-300 pt-0.5"
-          x-text="appVersionInfo"
-        ></p>
-      </template>
-    </nav>
+      </nav>
+    </div>
 
     <!-- ===== ABA: PRODUTOS ===== -->
     <template x-if="currentView === 'produtos'">
