@@ -36,7 +36,7 @@
     x-init="init()"
   >
     <!-- ===== NAVEGAÇÃO PRINCIPAL (abas Pedidos / Produtos / Histórico) ===== -->
-    <nav class="flex border-b border-gray-200 mb-5">
+    <nav class="flex border-b border-gray-200">
       <button
         class="flex-1 pb-3 flex flex-col items-center gap-1"
         :class="currentView === 'pedidosDoDia' ? 'font-semibold text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'"
@@ -98,6 +98,17 @@
         </span>
       </template>
     </nav>
+
+    <!-- ===== VERSÃO DO APP (rodapé, ajuda a confirmar que atualizou) =====
+         Mostra quando o index.html mudou de verdade no servidor (descoberto
+         sozinho via cabeçalho Last-Modified) — não precisa bumpar nada
+         manualmente. Fica no fim de qualquer aba, depois do último conteúdo. -->
+    <template x-if="appVersionInfo">
+      <p
+        class="text-center text-[11px] text-gray-300 py-3"
+        x-text="appVersionInfo"
+      ></p>
+    </template>
 
     <!-- ===== ABA: PRODUTOS ===== -->
     <template x-if="currentView === 'produtos'">

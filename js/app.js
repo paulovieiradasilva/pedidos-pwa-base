@@ -96,6 +96,7 @@ document.addEventListener('alpine:init', () => {
     auditCurrentOrders: {},
     historicoDate: localDateString(new Date()),
     historicoMenuOpen: false,
+    appVersionInfo: null,
 
     productForm: {
       id: null,
@@ -122,6 +123,26 @@ document.addEventListener('alpine:init', () => {
     async init() {
       await seedProductsIfEmpty();
       await this.setView('pedidosDoDia');
+      this.loadAppVersionInfo();
+    },
+
+    // Descobre quando o index.html mudou de verdade no servidor (cabeçalho
+    // Last-Modified da própria resposta) e guarda pra mostrar no rodapé —
+    // não depende de bumpar nenhum número manualmente a cada deploy. Se
+    // estiver offline ou o servidor não mandar o cabeçalho, só não mostra
+    // nada (não quebra o app).
+    async loadAppVersionInfo() {
+      try {
+        const response = await fetch('./index.html', { cache: 'no-store' });
+        const lastModified = response.headers.get('last-modified');
+        if (!lastModified) return;
+        const date = new Date(lastModified);
+        this.appVersionInfo = `Atualizado em ${date.toLocaleString('pt-BR', {
+          day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        })}`;
+      } catch {
+        // offline ou sem o cabeçalho — sem rodapé, sem quebrar nada.
+      }
     },
 
     // Mostra a notificação (toast) no rodapé por alguns segundos.
