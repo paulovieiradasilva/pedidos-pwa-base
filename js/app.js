@@ -74,6 +74,8 @@ document.addEventListener('alpine:init', () => {
     cartItems: [],
     editingOrderId: null,
     editingCartItemIndex: null,
+    clienteCardCollapsed: false,
+    productCardCollapsed: false,
     paymentMethod: '',
     changeFor: null,
     toastMessage: '',
@@ -442,6 +444,7 @@ document.addEventListener('alpine:init', () => {
         this.weightTotalTouched = false;
       }
       this.editingCartItemIndex = index;
+      this.productCardCollapsed = false;
     },
 
     // Remove um item do carrinho.
@@ -490,6 +493,18 @@ document.addEventListener('alpine:init', () => {
       this.addressSuggestions = [];
       this.customerMatchStatus = null;
       this.phoneError = '';
+      this.clienteCardCollapsed = false;
+      this.productCardCollapsed = false;
+    },
+
+    // Abre/fecha os cards de "Cliente" e "Adicionar produto" no formulário de
+    // pedido — colapsar libera espaço na tela depois que a seção já foi
+    // preenchida.
+    toggleClienteCard() {
+      this.clienteCardCollapsed = !this.clienteCardCollapsed;
+    },
+    toggleProductCard() {
+      this.productCardCollapsed = !this.productCardCollapsed;
     },
 
     // ===== Abrir/editar/salvar formulário de pedido =====
@@ -524,6 +539,9 @@ document.addEventListener('alpine:init', () => {
       this.addressSuggestions = [];
       this.customerMatchStatus = null;
       this.phoneError = '';
+      // Cliente já preenchido — começa colapsado pra sobrar espaço pra mexer nos itens.
+      this.clienteCardCollapsed = true;
+      this.productCardCollapsed = false;
       this.customers = await listCustomers();
       this.activeProducts = await listActiveProducts();
       this.showOrderForm = true;
