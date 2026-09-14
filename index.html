@@ -30,100 +30,95 @@
   </head>
 
   <body
-    class="bg-gray-50 px-4 max-w-md mx-auto"
-    style="
-      padding-top: max(2.75rem, calc(env(safe-area-inset-top) + 1.5rem));
-      padding-bottom: calc(6rem + env(safe-area-inset-bottom));
-    "
+    class="bg-gray-50 px-4 max-w-md mx-auto flex flex-col"
+    style="height: 100dvh"
     x-data="pedidosApp"
     x-init="init()"
   >
     <!-- ===== NAVEGAÇÃO PRINCIPAL (abas Pedidos / Produtos / Histórico) =====
-         Grudado com a versão do app num wrapper fixo no rodapé (mais fácil
-         de alcançar com o polegar no celular) — "fixed" tira do fluxo
-         normal, então a posição desse bloco na página não depende de onde
-         ele está no HTML, só do CSS abaixo. -->
-    <div class="fixed inset-x-0 bottom-0 z-30 max-w-md mx-auto">
-      <!-- Versão do app: fica na área cinza, acima do fundo branco da nav,
-           sempre visível sem precisar rolar até o fim de cada aba. -->
-      <template x-if="appVersionInfo">
-        <p
-          class="text-center text-[10px] text-gray-300 pb-1"
-          x-text="appVersionInfo"
-        ></p>
-      </template>
-      <nav
-        class="bg-white border-t border-gray-200 pt-1"
-        style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom))"
+         De volta pro topo (era no rodapé, mas colava na barra de gestos do
+         Android e ficava sobrando espaço mudando de aparelho pra aparelho —
+         mais simples deixar no topo, como sempre foi). "shrink-0" garante
+         que ela nunca encolhe no layout flex do body (ver abaixo). O padding
+         de cima é o que evita ficar embaixo do notch/Dynamic Island. -->
+    <nav
+      class="shrink-0 flex border-b border-gray-200 mb-5"
+      style="padding-top: max(0.75rem, env(safe-area-inset-top))"
+    >
+      <button
+        class="flex-1 pb-3 flex flex-col items-center gap-1"
+        :class="currentView === 'pedidosDoDia' ? 'font-semibold text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'"
+        @click="setView('pedidosDoDia')"
       >
-      <div class="flex">
-        <button
-          class="flex-1 pt-1.5 pb-1 flex flex-col items-center gap-1"
-          :class="currentView === 'pedidosDoDia' ? 'font-semibold text-gray-900' : 'text-gray-400'"
-          @click="setView('pedidosDoDia')"
-        >
-          <span x-html="icon('receipt', 24)"></span>
-          <span class="text-xs">Pedidos</span>
-        </button>
-        <button
-          class="flex-1 pt-1.5 pb-1 flex flex-col items-center gap-1"
-          :class="currentView === 'produtos' ? 'font-semibold text-gray-900' : 'text-gray-400'"
-          @click="setView('produtos')"
-        >
-          <span x-html="icon('tag', 24)"></span>
-          <span class="text-xs">Produtos</span>
-        </button>
-        <button
-          class="flex-1 pt-1.5 pb-1 flex flex-col items-center gap-1"
-          :class="currentView === 'historico' ? 'font-semibold text-gray-900' : 'text-gray-400'"
-          @click="setView('historico')"
-        >
-          <span x-html="icon('history', 24)"></span>
-          <span class="text-xs">Histórico</span>
-        </button>
-        <!-- Menu "..." de desenvolvedor (Limpar dados) — só aparece com config.js features.devMode = true -->
-        <template x-if="devModeEnabled()">
-          <span class="shrink-0 pt-1.5 pb-1 flex items-center">
-            <span class="relative">
-              <button
-                type="button"
-                class="text-gray-400 w-8 h-8 flex items-center justify-center"
-                aria-label="Mais opções"
-                @click.stop="toggleHistoricoMenu()"
+        <span x-html="icon('receipt', 22)"></span>
+        <span class="text-xs">Pedidos</span>
+      </button>
+      <button
+        class="flex-1 pb-3 flex flex-col items-center gap-1"
+        :class="currentView === 'produtos' ? 'font-semibold text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'"
+        @click="setView('produtos')"
+      >
+        <span x-html="icon('tag', 22)"></span>
+        <span class="text-xs">Produtos</span>
+      </button>
+      <button
+        class="flex-1 pb-3 flex flex-col items-center gap-1"
+        :class="currentView === 'historico' ? 'font-semibold text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'"
+        @click="setView('historico')"
+      >
+        <span x-html="icon('history', 22)"></span>
+        <span class="text-xs">Histórico</span>
+      </button>
+      <!-- Menu "..." de desenvolvedor (Limpar dados) — só aparece com config.js features.devMode = true -->
+      <template x-if="devModeEnabled()">
+        <span class="shrink-0 pb-3 flex items-center">
+          <span class="relative">
+            <button
+              type="button"
+              class="text-gray-400 w-8 h-8 flex items-center justify-center"
+              aria-label="Mais opções"
+              @click.stop="toggleHistoricoMenu()"
+            >
+              <span
+                class="pointer-events-none"
+                x-html="icon('moreVertical', 18)"
+              ></span>
+            </button>
+            <template x-if="historicoMenuOpen">
+              <div
+                class="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-md z-20 overflow-hidden"
+                @click.outside="historicoMenuOpen = false"
               >
-                <span
-                  class="pointer-events-none"
-                  x-html="icon('moreVertical', 18)"
-                ></span>
-              </button>
-              <template x-if="historicoMenuOpen">
-                <div
-                  class="absolute right-0 bottom-full mb-1 bg-white border rounded-lg shadow-md z-20 overflow-hidden"
-                  @click.outside="historicoMenuOpen = false"
+                <button
+                  type="button"
+                  class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 whitespace-nowrap w-full"
+                  @click="clearDatabase()"
                 >
-                  <button
-                    type="button"
-                    class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 whitespace-nowrap w-full"
-                    @click="clearDatabase()"
-                  >
-                    <span
-                      class="pointer-events-none"
-                      x-html="icon('trash', 16)"
-                    ></span>
-                    Limpar dados
-                  </button>
-                </div>
-              </template>
-            </span>
+                  <span
+                    class="pointer-events-none"
+                    x-html="icon('trash', 16)"
+                  ></span>
+                  Limpar dados
+                </button>
+              </div>
+            </template>
           </span>
-        </template>
-      </div>
-      </nav>
-    </div>
+        </span>
+      </template>
+    </nav>
 
+    <!-- ===== ÁREA PRINCIPAL (a aba atual) =====
+         "flex-1 min-h-0" faz essa área preencher todo o espaço entre a nav
+         e o rodapé de versão, sem estourar a altura do body (o "min-h-0" é
+         o que permite um filho com scroll interno funcionar dentro de um
+         flex item — sem ele o flexbox deixa crescer do tamanho do conteúdo
+         e a rolagem interna nunca ativa). -->
+    <main class="flex-1 min-h-0 flex flex-col">
     <!-- ===== ABA: PRODUTOS ===== -->
     <template x-if="currentView === 'produtos'">
-      <div>
+      <div class="h-full flex flex-col">
+        <!-- Cabeçalho fixo (não rola) -->
+        <div class="shrink-0">
         <div class="flex justify-between items-baseline mb-4">
           <h1 class="text-xl font-bold">Produtos</h1>
           <button
@@ -136,9 +131,12 @@
             ></span>
           </button>
         </div>
+        </div>
 
-        <!-- Formulário de cadastro/edição de produto -->
+        <!-- Formulário de cadastro/edição de produto (é a própria área
+             rolável quando aberto) -->
         <template x-if="showProductForm">
+          <div class="flex-1 min-h-0 overflow-y-auto">
           <div
             class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4"
           >
@@ -245,11 +243,14 @@
               </button>
             </div>
           </div>
+          </div>
         </template>
 
-        <!-- Lista de produtos (busca, filtro ativos/todos, ativar/desativar) -->
+        <!-- Lista de produtos (busca, filtro ativos/todos, ativar/desativar).
+             Busca+abas ficam fixas; só o grid de cards rola. -->
         <template x-if="!showProductForm">
-          <div>
+          <div class="flex-1 min-h-0 flex flex-col">
+            <div class="shrink-0">
             <input
               type="text"
               placeholder="Buscar por nome ou marca"
@@ -271,7 +272,9 @@
                 x-text="'Todos (' + products.length + ')'"
               ></button>
             </div>
+            </div>
 
+            <div class="flex-1 min-h-0 overflow-y-auto">
             <template x-if="filteredProductList().length === 0">
               <p class="text-sm text-gray-600">Nenhum produto encontrado.</p>
             </template>
@@ -342,6 +345,7 @@
                 </div>
               </template>
             </div>
+            </div>
           </div>
         </template>
       </div>
@@ -349,7 +353,8 @@
 
     <!-- ===== ABA: PEDIDOS DO DIA ===== -->
     <template x-if="currentView === 'pedidosDoDia'">
-      <div>
+      <div class="h-full flex flex-col">
+        <div class="shrink-0">
         <div class="flex justify-between items-baseline mb-4">
           <h1 class="text-xl font-bold">Pedidos</h1>
           <button
@@ -362,10 +367,12 @@
             ></span>
           </button>
         </div>
+        </div>
 
-        <!-- Formulário de novo pedido / edição -->
+        <!-- Formulário de novo pedido / edição (é a própria área rolável
+             quando aberto) -->
         <template x-if="showOrderForm">
-          <div>
+          <div class="flex-1 min-h-0 overflow-y-auto">
             <!-- Busca de cliente por telefone (com autocomplete) e endereço -->
             <div
               class="bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.10)] p-3 mb-4"
@@ -690,9 +697,11 @@
         </template>
 
         <!-- Lista de pedidos: busca em todo o histórico, filtro por dia/status/pagamento,
-             seleção em massa + impressão, paginação -->
+             seleção em massa + impressão, paginação. Busca/filtros ficam
+             fixos; só os cards + paginação rolam. -->
         <template x-if="!showOrderForm">
-          <div>
+          <div class="flex-1 min-h-0 flex flex-col">
+            <div class="shrink-0">
             <div class="relative mb-3">
               <input
                 type="text"
@@ -873,7 +882,9 @@
                 ></span>
               </button>
             </div>
+            </div>
 
+            <div class="flex-1 min-h-0 overflow-y-auto">
             <template x-if="currentOrders().length === 0">
               <p
                 class="text-sm text-gray-600"
@@ -1046,6 +1057,7 @@
                 ></button>
               </div>
             </template>
+            </div>
           </div>
         </template>
       </div>
@@ -1056,7 +1068,8 @@
          (não mostra o fluxo rotineiro pendente->impresso->entregue).
          Botão de impressora aqui = fechamento de caixa do dia selecionado. -->
     <template x-if="currentView === 'historico'">
-      <div>
+      <div class="h-full flex flex-col">
+        <div class="shrink-0">
         <h1 class="text-xl font-bold mb-4">Histórico</h1>
 
         <div class="flex items-center gap-2 mb-4">
@@ -1097,7 +1110,9 @@
             x-html="icon('printer')"
           ></button>
         </div>
+        </div>
 
+        <div class="flex-1 min-h-0 overflow-y-auto">
         <template x-if="historicoEntriesForDay().length === 0">
           <p class="text-sm text-gray-600">
             Nenhuma alteração registrada nesse dia.
@@ -1147,7 +1162,21 @@
             </div>
           </template>
         </div>
+        </div>
       </div>
+    </template>
+    </main>
+
+    <!-- ===== VERSÃO DO APP (rodapé fixo, separado da navegação) =====
+         Mostra quando o index.html mudou de verdade no servidor (Last-
+         Modified) — não depende de bumpar número nenhum manualmente.
+         "shrink-0" pra não encolher no layout flex do body, igual a nav. -->
+    <template x-if="appVersionInfo">
+      <p
+        class="shrink-0 text-center text-[10px] text-gray-300 border-t border-gray-100 py-1.5"
+        style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom))"
+        x-text="appVersionInfo"
+      ></p>
     </template>
 
     <!-- ===== NOTIFICAÇÃO TOAST (mensagens rápidas no topo da tela) ===== -->
