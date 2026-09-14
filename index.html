@@ -30,40 +30,46 @@
   </head>
 
   <body
-    class="bg-gray-50 px-4 pb-6 max-w-md mx-auto"
-    style="padding-top: max(3rem, calc(env(safe-area-inset-top) + 1.5rem))"
+    class="bg-gray-50 px-4 max-w-md mx-auto"
+    style="padding-top: max(2rem, calc(env(safe-area-inset-top) + 1.25rem)); padding-bottom: calc(4.75rem + env(safe-area-inset-bottom))"
     x-data="pedidosApp"
     x-init="init()"
   >
-    <!-- ===== NAVEGAÇÃO PRINCIPAL (abas Pedidos / Produtos / Histórico) ===== -->
-    <nav class="flex border-b border-gray-200">
+    <!-- ===== NAVEGAÇÃO PRINCIPAL (abas Pedidos / Produtos / Histórico) =====
+         Fixa no rodapé (mais fácil de alcançar com o polegar no celular) —
+         "fixed" tira do fluxo normal, então a posição dela na página não
+         depende de onde esse bloco está no HTML, só do CSS abaixo. -->
+    <nav
+      class="fixed inset-x-0 bottom-0 z-30 flex bg-white border-t border-gray-200 max-w-md mx-auto"
+      style="padding-bottom: env(safe-area-inset-bottom)"
+    >
       <button
-        class="flex-1 pb-3 flex flex-col items-center gap-1"
-        :class="currentView === 'pedidosDoDia' ? 'font-semibold text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'"
+        class="flex-1 pt-2 pb-2 flex flex-col items-center gap-1"
+        :class="currentView === 'pedidosDoDia' ? 'font-semibold text-gray-900' : 'text-gray-400'"
         @click="setView('pedidosDoDia')"
       >
-        <span x-html="icon('receipt', 22)"></span>
+        <span x-html="icon('receipt', 24)"></span>
         <span class="text-xs">Pedidos</span>
       </button>
       <button
-        class="flex-1 pb-3 flex flex-col items-center gap-1"
-        :class="currentView === 'produtos' ? 'font-semibold text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'"
+        class="flex-1 pt-2 pb-2 flex flex-col items-center gap-1"
+        :class="currentView === 'produtos' ? 'font-semibold text-gray-900' : 'text-gray-400'"
         @click="setView('produtos')"
       >
-        <span x-html="icon('tag', 22)"></span>
+        <span x-html="icon('tag', 24)"></span>
         <span class="text-xs">Produtos</span>
       </button>
       <button
-        class="flex-1 pb-3 flex flex-col items-center gap-1"
-        :class="currentView === 'historico' ? 'font-semibold text-gray-900 border-b-2 border-gray-900' : 'text-gray-400'"
+        class="flex-1 pt-2 pb-2 flex flex-col items-center gap-1"
+        :class="currentView === 'historico' ? 'font-semibold text-gray-900' : 'text-gray-400'"
         @click="setView('historico')"
       >
-        <span x-html="icon('history', 22)"></span>
+        <span x-html="icon('history', 24)"></span>
         <span class="text-xs">Histórico</span>
       </button>
       <!-- Menu "..." de desenvolvedor (Limpar dados) — só aparece com config.js features.devMode = true -->
       <template x-if="devModeEnabled()">
-        <span class="shrink-0 pb-3 flex items-center">
+        <span class="shrink-0 pt-2 pb-2 flex items-center">
           <span class="relative">
             <button
               type="button"
@@ -78,7 +84,7 @@
             </button>
             <template x-if="historicoMenuOpen">
               <div
-                class="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-md z-20 overflow-hidden"
+                class="absolute right-0 bottom-full mb-1 bg-white border rounded-lg shadow-md z-20 overflow-hidden"
                 @click.outside="historicoMenuOpen = false"
               >
                 <button
@@ -98,17 +104,6 @@
         </span>
       </template>
     </nav>
-
-    <!-- ===== VERSÃO DO APP (rodapé, ajuda a confirmar que atualizou) =====
-         Mostra quando o index.html mudou de verdade no servidor (descoberto
-         sozinho via cabeçalho Last-Modified) — não precisa bumpar nada
-         manualmente. Fica no fim de qualquer aba, depois do último conteúdo. -->
-    <template x-if="appVersionInfo">
-      <p
-        class="text-center text-[11px] text-gray-300 py-3"
-        x-text="appVersionInfo"
-      ></p>
-    </template>
 
     <!-- ===== ABA: PRODUTOS ===== -->
     <template x-if="currentView === 'produtos'">
@@ -1137,6 +1132,17 @@
           </template>
         </div>
       </div>
+    </template>
+
+    <!-- ===== VERSÃO DO APP (rodapé, ajuda a confirmar que atualizou) =====
+         Mostra quando o index.html mudou de verdade no servidor (descoberto
+         sozinho via cabeçalho Last-Modified) — não precisa bumpar nada
+         manualmente. Fica no fim de qualquer aba, depois do último conteúdo. -->
+    <template x-if="appVersionInfo">
+      <p
+        class="text-center text-[11px] text-gray-300 py-3"
+        x-text="appVersionInfo"
+      ></p>
     </template>
 
     <!-- ===== NOTIFICAÇÃO TOAST (mensagens rápidas no topo da tela) ===== -->
