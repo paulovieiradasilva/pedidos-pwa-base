@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { seedProductsIfEmpty, listProducts, listActiveProducts, saveProduct, setProductActive } from '../js/products.js';
+import { DEFAULT_CATALOG, seedProductsIfEmpty, listProducts, listActiveProducts, saveProduct, setProductActive } from '../js/products.js';
 
 describe('products', () => {
   it('seeds a default catalog when empty', async () => {
@@ -66,5 +66,32 @@ describe('products', () => {
     expect(found.soldByWeight).toBe(true);
     expect(found.pricePerKg).toBe(12.5);
     expect(found.prices).toBe(null);
+  });
+});
+
+describe('default catalog', () => {
+  it('has unique ids, active items and valid prices (card never cheaper than cash/pix)', () => {
+    const ids = DEFAULT_CATALOG.map(p => p.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const product of DEFAULT_CATALOG) {
+      const { dinheiro, pix, cartao } = product.prices;
+      expect(product.active).toBe(true);
+      expect(dinheiro).toBeGreaterThan(0);
+      expect(pix).toBe(dinheiro);
+      expect(cartao).toBeGreaterThanOrEqual(pix);
+    }
+  });
+
+  it('matches the supplier price table', () => {
+    const byId = Object.fromEntries(DEFAULT_CATALOG.map(p => [p.id, p.prices]));
+    expect(byId['agua-barata']).toEqual({ dinheiro: 7, pix: 7, cartao: 8 });
+    expect(byId['agua-barata-completa']).toEqual({ dinheiro: 30, pix: 30, cartao: 33 });
+    expect(byId['agua-cristalina']).toEqual({ dinheiro: 9, pix: 9, cartao: 9.5 });
+    expect(byId['agua-santa-joana']).toEqual({ dinheiro: 12, pix: 12, cartao: 12.5 });
+    expect(byId['agua-indaia']).toEqual({ dinheiro: 18, pix: 18, cartao: 18.5 });
+    expect(byId['gelo-3kg']).toEqual({ dinheiro: 9, pix: 9, cartao: 9.5 });
+    expect(byId['gelo-10kg']).toEqual({ dinheiro: 14, pix: 14, cartao: 14.5 });
+    expect(byId['carvao']).toEqual({ dinheiro: 9, pix: 9, cartao: 9.5 });
+    expect(byId['gas-p13']).toEqual({ dinheiro: 115, pix: 115, cartao: 120 });
   });
 });

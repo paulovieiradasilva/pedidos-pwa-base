@@ -3,12 +3,25 @@
 import { getAll, get, put } from './db.js';
 
 // Catálogo inicial, usado só na primeira vez que o app abre (banco vazio).
-const DEFAULT_CATALOG = [
-  { id: 'agua-6.5-a', name: 'Água 20L', brand: 'Marca A', prices: { dinheiro: 6.5, pix: 6.5, cartao: 6.5 }, active: true },
-  { id: 'agua-6.5-b', name: 'Água 20L', brand: 'Marca B', prices: { dinheiro: 6.5, pix: 6.5, cartao: 6.5 }, active: true },
-  { id: 'agua-10-a', name: 'Água 20L', brand: 'Marca C', prices: { dinheiro: 10, pix: 10, cartao: 10 }, active: true },
-  { id: 'agua-10-b', name: 'Água 20L', brand: 'Marca D', prices: { dinheiro: 10, pix: 10, cartao: 10 }, active: true },
-  { id: 'gas-p13', name: 'Gás P13', brand: 'Marca A', prices: { dinheiro: 110, pix: 110, cartao: 110 }, active: true }
+// Baseado na tabela de um fornecedor: dinheiro = Pix ("à vista ou Pix"), cartão
+// é um pouco mais caro. O volume "20L" da água não vem na tabela (é o padrão do
+// catálogo antigo) e o carvão vem sem unidade (saco): se for outro, edite o nome
+// na aba Produtos. A cortesia do gás (ganha uma água) não entra: o app exige
+// preço maior que zero.
+function catalogItem(id, name, brand, cash, card) {
+  return { id, name, brand, prices: { dinheiro: cash, pix: cash, cartao: card }, active: true };
+}
+
+export const DEFAULT_CATALOG = [
+  catalogItem('agua-barata', 'Água 20L', 'Mais barata', 7, 8),
+  catalogItem('agua-barata-completa', 'Água 20L completa (com galão)', 'Mais barata', 30, 33),
+  catalogItem('agua-cristalina', 'Água 20L', 'Cristalina', 9, 9.5),
+  catalogItem('agua-santa-joana', 'Água 20L', 'Santa Joana', 12, 12.5),
+  catalogItem('agua-indaia', 'Água 20L', 'Indaiá', 18, 18.5),
+  catalogItem('gelo-3kg', 'Gelo 3kg cubo', '', 9, 9.5),
+  catalogItem('gelo-10kg', 'Gelo 10kg escama', '', 14, 14.5),
+  catalogItem('carvao', 'Carvão', '', 9, 9.5),
+  catalogItem('gas-p13', 'Gás P13', '', 115, 120)
 ];
 
 // Popula o catálogo padrão apenas se o banco de produtos ainda estiver vazio.
