@@ -39,9 +39,13 @@
     </style>
   </head>
 
+  <!-- O app ocupa exatamente a tela visível ("fixed inset-0"), sem rolagem da
+       página: só as listas rolam por dentro e o rodapé de versão fica sempre
+       colado embaixo. Antes era "height: 100dvh", que em alguns navegadores de
+       celular (barras que aparecem/somem, barra inferior) passa da área visível
+       e empurrava o rodapé pra fora da tela. -->
   <body
-    class="bg-gray-50 px-4 max-w-md mx-auto flex flex-col"
-    style="height: 100dvh"
+    class="fixed inset-0 bg-gray-50 px-4 max-w-md mx-auto flex flex-col"
     x-data="pedidosApp"
     x-init="init()"
   >
