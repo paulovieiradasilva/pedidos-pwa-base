@@ -7,6 +7,10 @@ import {
   backupFileName,
   isBackupOverdue,
   daysSinceBackup,
+  encodeBackupText,
+  decodeBackupText,
+  parseBackupText,
+  BACKUP_TEXT_SOFT_LIMIT,
   BackupError
 } from '../js/backup.js';
 
@@ -127,5 +131,55 @@ describe('backup', () => {
     expect(daysSinceBackup(null, now)).toBeNull();
     expect(daysSinceBackup('2026-09-11T12:00:00Z', now)).toBe(9);
     expect(daysSinceBackup('2026-09-20T09:00:00Z', now)).toBe(0);
+  });
+});
+
+describe('backup em texto', () => {
+  beforeEach(async () => {
+    await deleteDatabase();
+    await openDB();
+  });
+
+  it('round-trips through the text format', async () => {
+    await seed();
+    const backup = await exportBackup();
+    const text = await encodeBackupText(backup);
+    expect(text.startsWith('PEDIDOS1:')).toBe(true);
+    const restored = await parseBackupText(text);
+    expect(restored.data).toEqual(backup.data);
+  });
+
+  it('uses short lines so e-mail and WhatsApp do not break the text', async () => {
+    await seed();
+    const text = await encodeBackupText(await exportBackup());
+    expect(Math.max(...text.split('\n').map(l => l.length))).toBeLessThanOrEqual(85);
+  });
+
+  it('tolerates quotes, reply markers, signature and blank lines around the text', async () => {
+    await seed();
+    const backup = await exportBackup();
+    const text = await encodeBackupText(backup);
+    const messy =
+      'Segue o backup:\n\n' +
+      text.split('\n').map(l => '> "' + l + '"').join('\r\n') +
+      '\n\n--\nEnviado do meu celular Samsung';
+    const restored = await parseBackupText(messy);
+    expect(restored.data).toEqual(backup.data);
+  });
+
+  it('rejects text that is not a backup or was cut short', async () => {
+    await seed();
+    const text = await encodeBackupText(await exportBackup());
+    await expect(decodeBackupText('bom dia')).rejects.toThrow(/não é um backup/);
+    await expect(decodeBackupText(text.slice(0, Math.floor(text.length / 2)))).rejects.toThrow(/incompleto/);
+    await expect(decodeBackupText('')).rejects.toBeInstanceOf(BackupError);
+  });
+
+  it('compresses: a 300-order backup fits under the WhatsApp-safe limit', async () => {
+    for (let i = 0; i < 300; i++) {
+      await put('orders', { id: 'o' + i, customerPhone: '11999990001', address: 'Rua das Flores, ' + i, items: [{ productId: 'p1', qty: 2 }], paymentMethod: 'pix', status: 'entregue', createdAt: '2026-09-20T10:00:00.000Z' });
+    }
+    const text = await encodeBackupText(await exportBackup());
+    expect(text.length).toBeLessThan(BACKUP_TEXT_SOFT_LIMIT);
   });
 });

@@ -140,13 +140,13 @@
             <button
               type="button"
               class="flex items-center gap-3 w-full text-left px-4 py-3"
-              @click="shareBackup()"
+              @click="openSheet('backup')"
             >
               <span class="text-gray-500 shrink-0" x-html="icon('share', 20)"></span>
               <span class="min-w-0 flex-1">
                 <span class="block text-sm text-gray-800">Fazer backup</span>
                 <span class="block text-xs text-gray-400" x-text="'Último: ' + lastBackupLabel().toLowerCase()"></span>
-                <span class="block text-xs text-gray-400">Envie pro seu WhatsApp, Drive ou e-mail — fora do celular.</span>
+                <span class="block text-xs text-gray-400">Guarde no Drive ou e-mail, fora do celular.</span>
               </span>
               <template x-if="backupOverdue">
                 <span class="shrink-0 text-[10px] bg-amber-50 text-amber-800 rounded-full px-2 py-0.5">Atrasado</span>
@@ -156,7 +156,7 @@
             <button
               type="button"
               class="flex items-center gap-3 w-full text-left px-4 py-3"
-              @click="pickRestoreFile()"
+              @click="openSheet('restore')"
             >
               <span class="text-gray-500 shrink-0" x-html="icon('download', 20)"></span>
               <span class="min-w-0">
@@ -199,6 +199,166 @@
             x-text="appVersionInfo"
           ></p>
         </div>
+    </div>
+
+    <!-- ===== FOLHA DE OPÇÕES (sobe de baixo): onde guardar / de onde restaurar o backup =====
+         Conteúdo muda por sheetKind: 'backup' | 'restore' | 'drive' (lista) | 'text' (colar). -->
+    <div
+      class="fixed inset-0 z-[55] max-w-md mx-auto overflow-hidden"
+      :class="sheetOpen ? '' : 'pointer-events-none'"
+    >
+      <div
+        x-show="sheetOpen"
+        x-transition:enter="transition-opacity ease-out duration-300"
+        x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100"
+        x-transition:leave="transition-opacity ease-in duration-200"
+        x-transition:leave-start="opacity-100"
+        x-transition:leave-end="opacity-0"
+        class="absolute inset-0 bg-gray-900/50"
+        style="display: none"
+        @click="closeSheet()"
+      ></div>
+      <div
+        x-show="sheetOpen"
+        x-transition:enter="transition-transform ease-out duration-300"
+        x-transition:enter-start="translate-y-full"
+        x-transition:enter-end="translate-y-0"
+        x-transition:leave="transition-transform ease-in duration-200"
+        x-transition:leave-start="translate-y-0"
+        x-transition:leave-end="translate-y-full"
+        class="absolute left-0 right-0 bottom-0 bg-white rounded-t-2xl px-4 pt-3 shadow-xl max-h-[90%] overflow-y-auto no-scrollbar"
+        style="display: none; padding-bottom: max(1rem, env(safe-area-inset-bottom))"
+      >
+        <div class="w-9 h-1 bg-gray-300 rounded-full mx-auto mb-3"></div>
+
+        <template x-if="sheetKind === 'backup'">
+          <div>
+            <div class="text-base font-bold">Onde guardar o backup?</div>
+            <p class="text-xs text-gray-500 mb-3">Escolha um lugar fora do celular.</p>
+            <template x-if="driveEnabled()">
+              <button
+                type="button"
+                class="flex items-center gap-3 w-full text-left rounded-xl p-3 mb-2 border-2 border-blue-600 bg-blue-50"
+                :class="sheetBusy && 'opacity-60'"
+                @click="backupToDrive()"
+              >
+                <span class="text-blue-600 shrink-0" x-html="icon('cloud', 24)"></span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-medium">Google Drive <span class="ml-1 text-[10px] font-medium bg-blue-600 text-white rounded-full px-2 py-0.5">Recomendado</span></span>
+                  <span class="block text-xs text-gray-500">Fica na sua conta Google, seguro se o celular quebrar.</span>
+                </span>
+              </button>
+            </template>
+            <button
+              type="button"
+              class="flex items-center gap-3 w-full text-left rounded-xl p-3 mb-2 border border-gray-200"
+              :class="sheetBusy && 'opacity-60'"
+              @click="backupByText()"
+            >
+              <span class="text-gray-600 shrink-0" x-html="icon('mail', 24)"></span>
+              <span class="min-w-0">
+                <span class="block text-sm font-medium">E-mail ou WhatsApp</span>
+                <span class="block text-xs text-gray-500">Envie pra você mesmo e guarde a mensagem.</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              class="flex items-center gap-3 w-full text-left rounded-xl p-3 border border-gray-200"
+              @click="backupToFile()"
+            >
+              <span class="text-gray-600 shrink-0" x-html="icon('file', 24)"></span>
+              <span class="min-w-0">
+                <span class="block text-sm font-medium">Arquivo no celular</span>
+                <span class="block text-xs text-gray-500">Fica só neste aparelho.</span>
+              </span>
+            </button>
+          </div>
+        </template>
+
+        <template x-if="sheetKind === 'restore'">
+          <div>
+            <div class="text-base font-bold">De onde restaurar?</div>
+            <p class="text-xs text-gray-500 mb-3">Trocou de celular? Escolha onde guardou o backup.</p>
+            <template x-if="driveEnabled()">
+              <button
+                type="button"
+                class="flex items-center gap-3 w-full text-left rounded-xl p-3 mb-2 border-2 border-blue-600 bg-blue-50"
+                :class="sheetBusy && 'opacity-60'"
+                @click="openDriveRestore()"
+              >
+                <span class="text-blue-600 shrink-0" x-html="icon('cloud', 24)"></span>
+                <span class="min-w-0">
+                  <span class="block text-sm font-medium">Google Drive <span class="ml-1 text-[10px] font-medium bg-blue-600 text-white rounded-full px-2 py-0.5">Recomendado</span></span>
+                  <span class="block text-xs text-gray-500">Entre com a mesma conta Google.</span>
+                </span>
+              </button>
+            </template>
+            <button
+              type="button"
+              class="flex items-center gap-3 w-full text-left rounded-xl p-3 mb-2 border border-gray-200"
+              @click="openTextRestore()"
+            >
+              <span class="text-gray-600 shrink-0" x-html="icon('mail', 24)"></span>
+              <span class="min-w-0">
+                <span class="block text-sm font-medium">Colar texto do e-mail</span>
+                <span class="block text-xs text-gray-500">Copie a mensagem do backup e cole aqui.</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              class="flex items-center gap-3 w-full text-left rounded-xl p-3 border border-gray-200"
+              @click="pickRestoreFile()"
+            >
+              <span class="text-gray-600 shrink-0" x-html="icon('file', 24)"></span>
+              <span class="min-w-0">
+                <span class="block text-sm font-medium">Arquivo do celular</span>
+                <span class="block text-xs text-gray-500">Escolher um arquivo de backup.</span>
+              </span>
+            </button>
+          </div>
+        </template>
+
+        <template x-if="sheetKind === 'drive'">
+          <div>
+            <div class="text-base font-bold">Backups no seu Drive</div>
+            <p class="text-xs text-gray-500 mb-2">Toque no backup que quer restaurar.</p>
+            <template x-for="file in driveBackups" :key="file.id">
+              <button
+                type="button"
+                class="flex items-center justify-between gap-3 w-full text-left py-3 border-b border-gray-100 last:border-b-0"
+                :class="sheetBusy && 'opacity-60'"
+                @click="pickDriveBackup(file)"
+              >
+                <span class="min-w-0">
+                  <span class="block text-sm" x-text="new Date(file.createdTime).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })"></span>
+                  <span class="block text-xs text-gray-400" x-text="file.name"></span>
+                </span>
+                <span class="text-gray-400 shrink-0" x-html="icon('chevronRight', 18)"></span>
+              </button>
+            </template>
+          </div>
+        </template>
+
+        <template x-if="sheetKind === 'text'">
+          <div>
+            <div class="text-base font-bold">Cole o texto do backup</div>
+            <p class="text-xs text-gray-500 mb-2">Abra o e-mail ou a mensagem do backup, copie tudo e cole abaixo.</p>
+            <textarea
+              class="border rounded-lg p-2 w-full text-xs font-mono h-32 mb-3"
+              placeholder="PEDIDOS1:..."
+              x-model="restoreText"
+            ></textarea>
+            <button
+              type="button"
+              class="bg-blue-600 text-white p-2 w-full rounded-lg font-semibold"
+              @click="confirmTextRestore()"
+            >
+              Continuar
+            </button>
+          </div>
+        </template>
+      </div>
     </div>
 
     <input
@@ -1409,7 +1569,7 @@
       x-transition:leave="transition ease-in duration-150"
       x-transition:leave-start="opacity-100 translate-y-0"
       x-transition:leave-end="opacity-0 translate-y-2"
-      class="fixed left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-50"
+      class="fixed left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md z-[70]"
       style="
         display: none;
         bottom: max(4.5rem, calc(env(safe-area-inset-bottom) + 4rem));

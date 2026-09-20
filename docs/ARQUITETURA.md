@@ -26,7 +26,8 @@ uma vez, com os dados guardados no próprio aparelho (IndexedDB).
 | `js/customers.js` | Cadastro de clientes, usado no autocomplete de telefone/endereço. |
 | `js/products.js` | Catálogo de produtos (CRUD da aba Produtos). |
 | `js/orders.js` | Criar/editar/excluir pedidos, calcular total, e decidir o que vai pro Histórico. |
-| `js/backup.js` | Exporta/importa todos os dados num arquivo `.json` (backup pelo menu ☰) e valida o arquivo antes de restaurar. |
+| `js/backup.js` | Exporta/importa todos os dados (arquivo `.json` ou texto gzip+base64 pra e-mail/WhatsApp, pelo menu ☰) e valida antes de restaurar. |
+| `js/drive.js` | Backup no Google Drive do cliente: login (Google Identity Services, carregado só quando usado) e chamadas à API do Drive. Precisa de `features.googleClientId`. |
 | `js/auditLog.js` | Grava e lista as entradas do Histórico (log de auditoria). |
 | `js/printer.js` | Monta o texto do recibo (pedido ou fechamento de caixa) e envia pra impressora via Bluetooth. |
 | `js/app.js` | Liga tudo isso à tela: é o componente Alpine.js com o estado e as ações que o `index.html` usa. |

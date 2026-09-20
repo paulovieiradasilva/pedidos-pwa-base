@@ -67,10 +67,36 @@ isolado dos outros.
 ## Troca ou perda de celular do cliente
 
 Os dados ficam só no celular. Por isso o cliente deve fazer backup pelo
-menu ☰ (**Fazer backup**) e guardar o arquivo fora do aparelho (WhatsApp,
-Drive ou e-mail). No celular novo: abrir o link do app, instalar
+menu ☰ (**Fazer backup**) e guardar **fora do aparelho**: no Google Drive
+ou por e-mail/WhatsApp. No celular novo: abrir o link do app, instalar
 (**⋮ → Adicionar à tela inicial**), abrir o menu ☰ → **Restaurar backup**
-e escolher o arquivo. Sem backup, não há como recuperar os dados.
+e escolher de onde (Drive, colar o texto do e-mail ou arquivo). Sem
+backup, não há como recuperar os dados.
+
+### Backup no Google Drive (configuração única)
+
+A opção "Google Drive" só aparece quando `features.googleClientId` está
+preenchido no `config.js`. Sem isso, o app oferece só E-mail/WhatsApp e
+Arquivo. Faça **uma vez** (vale pra todos os clientes):
+
+1. Em <https://console.cloud.google.com> crie um projeto (ex.: "Pedidos PWA").
+2. **APIs e serviços → Biblioteca →** ative a **Google Drive API**.
+3. **APIs e serviços → Tela de permissão OAuth:** tipo **Externo**, preencha
+   nome do app e e-mail de suporte; em escopos adicione
+   `.../auth/drive.file` (não sensível, sem verificação do Google). Depois
+   clique em **Publicar app** (status "Em produção") — em "Teste" só
+   contas cadastradas entram e a autorização expira em 7 dias.
+4. **Credenciais → Criar credenciais → ID do cliente OAuth →** tipo
+   **Aplicativo da Web**. Em **Origens JavaScript autorizadas** cadastre o
+   endereço de **cada cliente**, ex.: `https://<usuario>.github.io` (sem
+   barra no final e sem o nome do repositório). Limite de cerca de 100
+   origens; cliente novo = adicionar a origem dele aqui.
+5. Copie o **ID do cliente** (termina em `.apps.googleusercontent.com`) e
+   cole em `googleClientId` no `config.js` de cada cliente.
+
+Teste no celular: ☰ → Fazer backup → Google Drive → entrar com a conta →
+conferir o arquivo `pedidos-backup-AAAA-MM-DD.json` no Drive → em outro
+navegador, ☰ → Restaurar backup → Google Drive.
 
 ## 3. Pedido de customização de um cliente específico
 

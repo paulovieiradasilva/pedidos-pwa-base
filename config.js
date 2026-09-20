@@ -9,6 +9,9 @@ window.APP_CONFIG = {
     soldByWeight: true,
     // Depois de quantos dias sem backup o app avisa (ponto âmbar no menu ☰).
     backupReminderDays: 7,
+    // ID de cliente OAuth do Google (Google Cloud) pra salvar o backup no Drive do cliente.
+    // Vazio = a opção "Google Drive" não aparece. Passo a passo no DEPLOY.md.
+    googleClientId: '',
     // Se true, mostra o menu de desenvolvedor (ex.: "Limpar dados") na barra de navegação.
     // Deve ficar `false` em uso normal do negócio — é só para testes/desenvolvimento.
     devMode: true

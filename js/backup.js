@@ -90,3 +90,81 @@ export function daysSinceBackup(lastBackupAt, now = new Date()) {
   if (Number.isNaN(last.getTime())) return null;
   return Math.max(0, Math.floor((now.getTime() - last.getTime()) / DAY_MS));
 }
+
+// ===== Backup em texto (pra mandar por e-mail/WhatsApp e colar na restauração) =====
+
+const TEXT_PREFIX_GZIP = 'PEDIDOS1:';
+const TEXT_PREFIX_RAW = 'PEDIDOS1raw:';
+// Acima disso o WhatsApp pode cortar a mensagem (limite ~65 mil caracteres).
+export const BACKUP_TEXT_SOFT_LIMIT = 60000;
+
+function bytesToBase64(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(base64) {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function pipeBytes(bytes, transform) {
+  const stream = new Blob([bytes]).stream().pipeThrough(transform);
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+// Transforma o backup num texto único (gzip + base64, em linhas curtas — e-mail
+// e WhatsApp quebram linhas muito longas). Sem gzip no navegador, vai sem compressão.
+export async function encodeBackupText(backup) {
+  const raw = new TextEncoder().encode(JSON.stringify(backup));
+  let prefix = TEXT_PREFIX_RAW;
+  let bytes = raw;
+  if (typeof CompressionStream === 'function') {
+    bytes = await pipeBytes(raw, new CompressionStream('gzip'));
+    prefix = TEXT_PREFIX_GZIP;
+  }
+  const lines = bytesToBase64(bytes).match(/.{1,76}/g) ?? [];
+  return [prefix + (lines[0] ?? ''), ...lines.slice(1)].join('\n');
+}
+
+// Faz o caminho inverso: acha o backup no meio do texto colado (ignora
+// assinatura do e-mail, aspas, ">" de resposta, quebras de linha) e devolve o JSON.
+export async function decodeBackupText(text) {
+  const incomplete = new BackupError('Texto do backup incompleto. Copie tudo, do início ao fim.');
+  const lines = String(text ?? '')
+    .split(/\r?\n/)
+    .map(line => line.replace(/^[\s>"'“”]+|[\s"'“”]+$/g, ''));
+
+  const start = lines.findIndex(line => line.includes('PEDIDOS1'));
+  if (start === -1) throw new BackupError('Esse texto não é um backup deste aplicativo.');
+
+  const first = lines[start];
+  const isRaw = first.includes(TEXT_PREFIX_RAW);
+  const marker = isRaw ? TEXT_PREFIX_RAW : TEXT_PREFIX_GZIP;
+  if (!first.includes(marker)) throw new BackupError('Esse texto não é um backup deste aplicativo.');
+
+  let base64 = first.slice(first.indexOf(marker) + marker.length).match(/^[A-Za-z0-9+/=]*/)[0];
+  for (const line of lines.slice(start + 1)) {
+    if (!/^[A-Za-z0-9+/=]+$/.test(line)) break;
+    base64 += line;
+  }
+  if (!base64) throw incomplete;
+
+  try {
+    let bytes = base64ToBytes(base64);
+    if (!isRaw) bytes = await pipeBytes(bytes, new DecompressionStream('gzip'));
+    return new TextDecoder().decode(bytes);
+  } catch {
+    throw incomplete;
+  }
+}
+
+// Texto colado -> backup validado (ou BackupError).
+export async function parseBackupText(text) {
+  return parseBackup(await decodeBackupText(text));
+}

@@ -88,7 +88,8 @@ Além disso, em `js/printer.js`:
 ├── js/                     # Módulos JavaScript (ES modules)
 │   ├── app.js             # Componente Alpine.js principal wiring da UI
 │   ├── db.js              # Wrapper do IndexedDB (open/get/put/getAll/replaceAll)
-│   ├── backup.js          # Backup/restauração dos dados em arquivo .json
+│   ├── backup.js          # Backup/restauração dos dados (arquivo .json e texto por e-mail/WhatsApp)
+│   ├── drive.js           # Backup no Google Drive do cliente (login Google + API do Drive)
 │   ├── customers.js       # Busca/salva cliente por telefone, lista pra autocomplete
 │   ├── products.js        # Catálogo de produtos (preço fixo ou por peso) com seed padrão
 │   ├── orders.js          # Criação/edição de pedidos, cálculo de total e troco, status
@@ -102,6 +103,7 @@ Além disso, em `js/printer.js`:
 │   ├── setup.js           # Setup de testes (carrega fake-indexeddb)
 │   ├── db.test.js
 │   ├── backup.test.js
+│   ├── drive.test.js
 │   ├── customers.test.js
 │   ├── products.test.js
 │   ├── orders.test.js
@@ -126,8 +128,13 @@ O app tem 2 telas, alternadas por um menu fixo no topo (sem router, é tudo `x-i
 
 Como os dados ficam só no celular (IndexedDB), o botão ☰ no canto direito da navegação abre um menu lateral com:
 
-- **Fazer backup:** gera `pedidos-backup-AAAA-MM-DD.json` e abre a folha de compartilhar do celular (WhatsApp, Drive, e-mail...) — quem escolhe onde guardar é o usuário. Sem suporte a compartilhar arquivo, baixa pra pasta Downloads. Um ponto âmbar no ☰ avisa quando o backup está atrasado (`features.backupReminderDays` em `config.js`, padrão 7 dias; só cobra de quem já tem pedidos).
-- **Restaurar backup:** escolhe um arquivo `.json`, mostra as contagens (pedidos/produtos/clientes) e, ao confirmar, **substitui** todos os dados do aparelho (tudo ou nada). Serve pra trocar de celular ou recuperar depois de perda de dados.
+- **Fazer backup:** abre uma folha com 3 destinos, todos fora do controle do app (quem escolhe onde guardar é o usuário):
+  - **Google Drive** (só aparece se `features.googleClientId` estiver preenchido no `config.js`): o cliente entra com a conta Google e o backup vai pro Drive dele (escopo `drive.file`; mantém os 10 mais recentes). Configuração em [DEPLOY.md](DEPLOY.md#backup-no-google-drive-configuração-única).
+  - **E-mail ou WhatsApp:** o backup vai como **texto** (gzip + base64, começa com `PEDIDOS1:`) no corpo da mensagem, via compartilhar do celular (ou copiado, se o navegador não compartilha). Funciona em qualquer navegador Android.
+  - **Arquivo no celular:** gera `pedidos-backup-AAAA-MM-DD.json`. Muitos navegadores Android (Chrome, Samsung Internet) não deixam compartilhar arquivo `.json` e o app apenas baixa pra pasta Downloads (só neste aparelho); o app avisa isso.
+
+  Um ponto âmbar no ☰ avisa quando o backup está atrasado (`features.backupReminderDays`, padrão 7 dias; só cobra de quem já tem pedidos).
+- **Restaurar backup:** escolhe de onde (Drive, colar o texto do e-mail, ou arquivo), mostra as contagens (pedidos/produtos/clientes) e, ao confirmar, **substitui** todos os dados do aparelho (tudo ou nada). Serve pra trocar de celular ou recuperar depois de perda de dados.
 - **Dados protegidos:** mostra se o navegador aceitou não apagar os dados sozinho (`navigator.storage.persist()`).
 - **Limpar dados:** só com `features.devMode = true`.
 

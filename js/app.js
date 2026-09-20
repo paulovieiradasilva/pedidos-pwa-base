@@ -7,7 +7,8 @@
 
 import { listAuditLog } from './auditLog.js';
 import { findCustomerByPhone, listCustomers, saveCustomer } from './customers.js';
-import { BackupError, backupFileName, daysSinceBackup, exportBackup, isBackupOverdue, parseBackup, restoreBackup } from './backup.js';
+import { BACKUP_TEXT_SOFT_LIMIT, BackupError, backupFileName, daysSinceBackup, encodeBackupText, exportBackup, isBackupOverdue, parseBackup, parseBackupText, restoreBackup } from './backup.js';
+import { DriveError, downloadBackup, listBackups, requestDriveToken, uploadBackup } from './drive.js';
 import { deleteDatabase } from './db.js';
 import { createOrder, listAllOrders, listOrdersForDay, localDateString, removeOrder, updateOrder, updateOrderStatus } from './orders.js';
 import { buildClosingReceiptBytes, buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
@@ -103,6 +104,11 @@ document.addEventListener('alpine:init', () => {
     backupOverdue: false,
     storagePersisted: null,
     restorePending: null,
+    sheetOpen: false,
+    sheetKind: 'backup',
+    sheetBusy: false,
+    driveBackups: [],
+    restoreText: '',
     appVersionInfo: null,
 
     productForm: {
@@ -243,10 +249,84 @@ document.addEventListener('alpine:init', () => {
       return `Há ${days} dias`;
     },
 
-    // Gera o arquivo de backup e abre a folha de compartilhar do celular
-    // (WhatsApp, Drive, e-mail...) — quem escolhe onde guardar é o usuário.
-    // Sem suporte a compartilhar arquivo, baixa pra pasta Downloads.
-    async shareBackup() {
+    // ===== Folha de opções: onde guardar / de onde restaurar o backup =====
+
+    // O Google Drive só aparece quando o cliente tem o ID do Google configurado (config.js).
+    driveEnabled() {
+      return Boolean(window.APP_CONFIG?.features?.googleClientId);
+    },
+
+    // Abre a folha de opções. kind: 'backup' | 'restore'. Fecha o menu lateral.
+    openSheet(kind) {
+      this.menuOpen = false;
+      this.sheetKind = kind;
+      this.restoreText = '';
+      this.sheetOpen = true;
+    },
+
+    closeSheet() {
+      this.sheetOpen = false;
+    },
+
+    // Mostra o erro de uma operação (mensagem pronta quando vem do Drive/backup).
+    showBackupError(error, fallback) {
+      const known = error instanceof DriveError || error instanceof BackupError;
+      this.showToast(known ? error.message : fallback);
+    },
+
+    // Backup no Google Drive do cliente.
+    async backupToDrive() {
+      if (this.sheetBusy) return;
+      this.sheetBusy = true;
+      try {
+        const token = await requestDriveToken(window.APP_CONFIG.features.googleClientId);
+        const backup = await exportBackup();
+        await uploadBackup(token, backup, backupFileName());
+        this.markBackupDone();
+        this.sheetOpen = false;
+        this.showToast('Backup salvo no seu Google Drive.');
+      } catch (error) {
+        this.showBackupError(error, 'Não foi possível salvar no Drive. Tente de novo.');
+      } finally {
+        this.sheetBusy = false;
+      }
+    },
+
+    // Backup em texto: abre o Gmail/WhatsApp com o backup no corpo da mensagem.
+    // Sem compartilhar, copia o texto pra colar onde quiser.
+    async backupByText() {
+      if (this.sheetBusy) return;
+      this.sheetBusy = true;
+      try {
+        const text = await encodeBackupText(await exportBackup());
+        const title = `Backup Pedidos ${new Date().toLocaleDateString('pt-BR')}`;
+        const tooBig = text.length > BACKUP_TEXT_SOFT_LIMIT;
+
+        if (navigator.share) {
+          try {
+            await navigator.share({ title, text });
+            this.markBackupDone();
+            this.sheetOpen = false;
+            this.showToast(tooBig ? 'Backup enviado. Ele é grande: se o WhatsApp cortar, use o e-mail ou o Drive.' : 'Backup pronto. Guarde a mensagem.');
+            return;
+          } catch (error) {
+            if (error?.name === 'AbortError') return;
+          }
+        }
+        await navigator.clipboard.writeText(text);
+        this.markBackupDone();
+        this.sheetOpen = false;
+        this.showToast('Backup copiado. Cole no e-mail ou no WhatsApp e envie pra você.');
+      } catch (error) {
+        this.showBackupError(error, 'Não foi possível gerar o backup em texto.');
+      } finally {
+        this.sheetBusy = false;
+      }
+    },
+
+    // Backup em arquivo: tenta compartilhar (só alguns navegadores deixam), depois
+    // a janela "salvar como" (computador) e por fim baixa pra pasta Downloads.
+    async backupToFile() {
       const backup = await exportBackup();
       const fileName = backupFileName();
       const json = JSON.stringify(backup);
@@ -264,6 +344,7 @@ document.addEventListener('alpine:init', () => {
         try {
           await navigator.share({ files: [shareable], title: fileName });
           this.markBackupDone();
+          this.sheetOpen = false;
           this.showToast('Backup pronto. Confira se foi salvo fora do celular.');
           return;
         } catch (error) {
@@ -282,6 +363,7 @@ document.addEventListener('alpine:init', () => {
           await writable.write(json);
           await writable.close();
           this.markBackupDone();
+          this.sheetOpen = false;
           this.showToast('Backup salvo.');
           return;
         } catch (error) {
@@ -289,8 +371,7 @@ document.addEventListener('alpine:init', () => {
         }
       }
 
-      const file = candidates[0];
-      const url = URL.createObjectURL(file);
+      const url = URL.createObjectURL(candidates[0]);
       const link = document.createElement('a');
       link.href = url;
       link.download = fileName;
@@ -299,7 +380,64 @@ document.addEventListener('alpine:init', () => {
       link.remove();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
       this.markBackupDone();
-      this.showToast('Backup baixado só neste celular. Copie também pro Drive ou WhatsApp.');
+      this.sheetOpen = false;
+      this.showToast('Este navegador não compartilha arquivos: o backup ficou só neste celular. Use o Drive ou o e-mail pra guardar fora.');
+    },
+
+    // Restaurar do Google Drive: entra na conta, lista os últimos backups.
+    async openDriveRestore() {
+      if (this.sheetBusy) return;
+      this.sheetBusy = true;
+      try {
+        const token = await requestDriveToken(window.APP_CONFIG.features.googleClientId);
+        const files = await listBackups(token);
+        if (files.length === 0) {
+          this.showToast('Nenhum backup encontrado nessa conta do Google.');
+          return;
+        }
+        this.driveBackups = files;
+        this.sheetKind = 'drive';
+      } catch (error) {
+        this.showBackupError(error, 'Não foi possível abrir o Google Drive. Tente de novo.');
+      } finally {
+        this.sheetBusy = false;
+      }
+    },
+
+    // Baixa o backup escolhido da lista do Drive e pede confirmação.
+    async pickDriveBackup(file) {
+      if (this.sheetBusy) return;
+      this.sheetBusy = true;
+      try {
+        const token = await requestDriveToken(window.APP_CONFIG.features.googleClientId);
+        this.restorePending = parseBackup(await downloadBackup(token, file.id));
+        this.sheetOpen = false;
+      } catch (error) {
+        this.showBackupError(error, 'Não foi possível baixar esse backup.');
+      } finally {
+        this.sheetBusy = false;
+      }
+    },
+
+    // Restaurar colando o texto recebido por e-mail/WhatsApp.
+    openTextRestore() {
+      this.restoreText = '';
+      this.sheetKind = 'text';
+    },
+
+    async confirmTextRestore() {
+      try {
+        this.restorePending = await parseBackupText(this.restoreText);
+        this.sheetOpen = false;
+      } catch (error) {
+        this.showBackupError(error, 'Não foi possível ler esse texto.');
+      }
+    },
+
+    // Restaurar de um arquivo do celular (fecha a folha e abre o seletor de arquivos).
+    pickRestoreFile() {
+      this.sheetOpen = false;
+      this.$refs.restoreInput.click();
     },
 
     markBackupDone() {
@@ -311,11 +449,6 @@ document.addEventListener('alpine:init', () => {
       }
       this.lastBackupAt = now;
       this.backupOverdue = false;
-    },
-
-    // Abre o seletor de arquivos pra escolher um backup.
-    pickRestoreFile() {
-      this.$refs.restoreInput.click();
     },
 
     // Lê o arquivo escolhido e, se for um backup válido, pede confirmação.
@@ -1145,6 +1278,9 @@ document.addEventListener('alpine:init', () => {
         check: { strokeWidth: 2.4, body: '<path d="M20 6 9 17l-5-5"/>' },
         chevronLeft: { strokeWidth: 2, body: '<path d="m15 18-6-6 6-6"/>' },
         chevronRight: { strokeWidth: 2, body: '<path d="m9 18 6-6-6-6"/>' },
+        cloud: { strokeWidth: 2, body: '<path d="M17.5 19H9a7 7 0 1 1 6.7-9h1.8a4.5 4.5 0 1 1 0 9Z"/>' },
+        mail: { strokeWidth: 2, body: '<rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/>' },
+        file: { strokeWidth: 2, body: '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/>' },
         menu: { strokeWidth: 2, body: '<path d="M4 6h16M4 12h16M4 18h16"/>' },
         share: { strokeWidth: 2, body: '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/>' },
         download: { strokeWidth: 2, body: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>' },
