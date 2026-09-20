@@ -82,10 +82,10 @@
       <!-- Botão ☰ do menu lateral (backup/restaurar). Vira ✕ quando o menu abre e
            fica acima da gaveta (z-50), no mesmo ponto da tela. O ponto âmbar
            avisa que o backup está atrasado. -->
-      <span class="shrink-0 pb-3 pl-1 flex items-start relative z-50">
+      <span class="shrink-0 pb-3 pl-1 self-stretch flex items-center relative z-50">
         <button
           type="button"
-          class="text-gray-500 w-11 h-11 -mt-1 flex items-center justify-center relative"
+          class="text-gray-500 w-11 h-11 -mr-2 flex items-center justify-center relative"
           :aria-label="menuOpen ? 'Fechar menu' : 'Abrir menu'"
           @click="toggleMenu()"
         >
@@ -104,12 +104,32 @@
 
     <!-- ===== MENU LATERAL (gaveta à direita): backup, restaurar, dados protegidos =====
          Fica fora do <nav> pra o overlay cobrir a tela toda. -->
-    <template x-if="menuOpen">
-      <div class="fixed inset-0 z-40 max-w-md mx-auto">
-        <div class="absolute inset-0 bg-gray-900/50" @click="menuOpen = false"></div>
+    <div
+      class="fixed inset-0 z-40 max-w-md mx-auto overflow-hidden"
+      :class="menuOpen ? '' : 'pointer-events-none'"
+    >
         <div
+          x-show="menuOpen"
+          x-transition:enter="transition-opacity ease-out duration-300"
+          x-transition:enter-start="opacity-0"
+          x-transition:enter-end="opacity-100"
+          x-transition:leave="transition-opacity ease-in duration-200"
+          x-transition:leave-start="opacity-100"
+          x-transition:leave-end="opacity-0"
+          class="absolute inset-0 bg-gray-900/50"
+          style="display: none"
+          @click="menuOpen = false"
+        ></div>
+        <div
+          x-show="menuOpen"
+          x-transition:enter="transition-transform ease-out duration-300"
+          x-transition:enter-start="translate-x-full"
+          x-transition:enter-end="translate-x-0"
+          x-transition:leave="transition-transform ease-in duration-200"
+          x-transition:leave-start="translate-x-0"
+          x-transition:leave-end="translate-x-full"
           class="absolute top-0 bottom-0 right-0 w-[78%] bg-white shadow-xl flex flex-col"
-          style="padding-top: max(0.75rem, env(safe-area-inset-top))"
+          style="display: none; padding-top: max(0.75rem, env(safe-area-inset-top))"
         >
           <div class="px-4 pt-3 pb-3 pr-14 border-b border-gray-100">
             <div class="text-base font-bold">Menu</div>
@@ -179,12 +199,11 @@
             x-text="appVersionInfo"
           ></p>
         </div>
-      </div>
-    </template>
+    </div>
 
     <input
       type="file"
-      accept="application/json,.json"
+      accept="application/json,.json,text/plain,.txt"
       class="hidden"
       x-ref="restoreInput"
       @change="onRestoreFileChosen($event)"

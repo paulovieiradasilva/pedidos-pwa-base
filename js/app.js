@@ -249,11 +249,20 @@ document.addEventListener('alpine:init', () => {
     async shareBackup() {
       const backup = await exportBackup();
       const fileName = backupFileName();
-      const file = new File([JSON.stringify(backup)], fileName, { type: 'application/json' });
+      const json = JSON.stringify(backup);
 
-      if (navigator.canShare?.({ files: [file] })) {
+      // O Chrome do Android só compartilha arquivos de tipos permitidos (texto,
+      // imagem, PDF...) e application/json não está na lista. Então tenta como
+      // JSON, depois como texto (.json e .txt) — o conteúdo é o mesmo.
+      const candidates = [
+        new File([json], fileName, { type: 'application/json' }),
+        new File([json], fileName, { type: 'text/plain' }),
+        new File([json], fileName.replace(/\.json$/, '.txt'), { type: 'text/plain' })
+      ];
+      const shareable = navigator.canShare ? candidates.find(f => navigator.canShare({ files: [f] })) : null;
+      if (shareable) {
         try {
-          await navigator.share({ files: [file], title: fileName });
+          await navigator.share({ files: [shareable], title: fileName });
           this.markBackupDone();
           this.showToast('Backup pronto. Confira se foi salvo fora do celular.');
           return;
@@ -262,6 +271,25 @@ document.addEventListener('alpine:init', () => {
         }
       }
 
+      // Computador: janela do sistema pra escolher onde salvar.
+      if (window.showSaveFilePicker) {
+        try {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: fileName,
+            types: [{ description: 'Backup', accept: { 'application/json': ['.json'] } }]
+          });
+          const writable = await handle.createWritable();
+          await writable.write(json);
+          await writable.close();
+          this.markBackupDone();
+          this.showToast('Backup salvo.');
+          return;
+        } catch (error) {
+          if (error?.name === 'AbortError') return;
+        }
+      }
+
+      const file = candidates[0];
       const url = URL.createObjectURL(file);
       const link = document.createElement('a');
       link.href = url;
