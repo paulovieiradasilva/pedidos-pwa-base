@@ -3,8 +3,9 @@
 // Todas as outras partes do sistema leem/gravam dados só através das funções daqui.
 
 const DB_NAME = 'pedidos-db';
-const DB_VERSION = 2;
-const STORES = {
+export const DB_VERSION = 2;
+// Nome de cada gaveta -> nome do campo que identifica um registro nela.
+export const STORES = {
   customers: 'phone',
   products: 'id',
   orders: 'id',
@@ -74,6 +75,31 @@ export async function remove(storeName, key) {
     tx.objectStore(storeName).delete(key);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
+  });
+}
+
+// Troca TODO o conteúdo do banco pelo que vem em `dataByStore` (ex.: { orders: [...], ... }),
+// numa única transação: ou tudo é substituído, ou nada muda (usado ao restaurar um backup).
+export async function replaceAll(dataByStore) {
+  const db = await openDB();
+  const storeNames = Object.keys(STORES);
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeNames, 'readwrite');
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error ?? new Error('Restauração cancelada.'));
+    try {
+      for (const storeName of storeNames) {
+        const store = tx.objectStore(storeName);
+        store.clear();
+        for (const record of dataByStore[storeName] ?? []) {
+          store.put(record);
+        }
+      }
+    } catch (error) {
+      tx.abort();
+      reject(error);
+    }
   });
 }
 

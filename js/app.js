@@ -7,6 +7,7 @@
 
 import { listAuditLog } from './auditLog.js';
 import { findCustomerByPhone, listCustomers, saveCustomer } from './customers.js';
+import { BackupError, backupFileName, daysSinceBackup, exportBackup, isBackupOverdue, parseBackup, restoreBackup } from './backup.js';
 import { deleteDatabase } from './db.js';
 import { createOrder, listAllOrders, listOrdersForDay, localDateString, removeOrder, updateOrder, updateOrderStatus } from './orders.js';
 import { buildClosingReceiptBytes, buildReceiptBytes, connectPrinter, printReceipt } from './printer.js';
@@ -97,7 +98,11 @@ document.addEventListener('alpine:init', () => {
     auditLog: [],
     auditCurrentOrders: {},
     historicoDate: localDateString(new Date()),
-    historicoMenuOpen: false,
+    menuOpen: false,
+    lastBackupAt: null,
+    backupOverdue: false,
+    storagePersisted: null,
+    restorePending: null,
     appVersionInfo: null,
 
     productForm: {
@@ -126,6 +131,7 @@ document.addEventListener('alpine:init', () => {
       await seedProductsIfEmpty();
       await this.setView('pedidosDoDia');
       this.loadAppVersionInfo();
+      this.requestPersistentStorage();
     },
 
     // Descobre quando o index.html mudou de verdade no servidor (cabeçalho
@@ -196,14 +202,134 @@ document.addEventListener('alpine:init', () => {
       return window.APP_CONFIG?.features?.devMode ?? false;
     },
 
-    toggleHistoricoMenu() {
-      this.historicoMenuOpen = !this.historicoMenuOpen;
+    // ===== Menu lateral (☰) e backup/restauração dos dados =====
+
+    // Abre/fecha o menu lateral; ao abrir, atualiza o status do backup.
+    toggleMenu() {
+      this.menuOpen = !this.menuOpen;
+      if (this.menuOpen) this.refreshBackupStatus();
+    },
+
+    // Pede ao navegador pra não apagar os dados do app sozinho (quando o
+    // celular está com pouco espaço). Silencioso; o resultado aparece no menu.
+    async requestPersistentStorage() {
+      try {
+        if (!navigator.storage?.persist) return;
+        this.storagePersisted = (await navigator.storage.persisted?.()) || (await navigator.storage.persist());
+      } catch {
+        this.storagePersisted = null;
+      }
+    },
+
+    // Lê quando foi o último backup e decide se está atrasado (só cobra
+    // backup de quem já tem pelo menos um pedido).
+    async refreshBackupStatus() {
+      try {
+        this.lastBackupAt = localStorage.getItem('pedidos:lastBackupAt');
+      } catch {
+        this.lastBackupAt = null;
+      }
+      const days = window.APP_CONFIG?.features?.backupReminderDays ?? 7;
+      const hasOrders = (await listAllOrders()).length > 0;
+      this.backupOverdue = hasOrders && isBackupOverdue(this.lastBackupAt, days);
+    },
+
+    // Texto do "Último backup" no menu.
+    lastBackupLabel() {
+      const days = daysSinceBackup(this.lastBackupAt);
+      if (days === null) return 'Nunca feito';
+      if (days === 0) return 'Hoje';
+      if (days === 1) return 'Ontem';
+      return `Há ${days} dias`;
+    },
+
+    // Gera o arquivo de backup e abre a folha de compartilhar do celular
+    // (WhatsApp, Drive, e-mail...) — quem escolhe onde guardar é o usuário.
+    // Sem suporte a compartilhar arquivo, baixa pra pasta Downloads.
+    async shareBackup() {
+      const backup = await exportBackup();
+      const fileName = backupFileName();
+      const file = new File([JSON.stringify(backup)], fileName, { type: 'application/json' });
+
+      if (navigator.canShare?.({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: fileName });
+          this.markBackupDone();
+          this.showToast('Backup pronto. Confira se foi salvo fora do celular.');
+          return;
+        } catch (error) {
+          if (error?.name === 'AbortError') return;
+        }
+      }
+
+      const url = URL.createObjectURL(file);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      this.markBackupDone();
+      this.showToast('Backup baixado só neste celular. Copie também pro Drive ou WhatsApp.');
+    },
+
+    markBackupDone() {
+      const now = new Date().toISOString();
+      try {
+        localStorage.setItem('pedidos:lastBackupAt', now);
+      } catch {
+        // sem localStorage: só não lembra a data.
+      }
+      this.lastBackupAt = now;
+      this.backupOverdue = false;
+    },
+
+    // Abre o seletor de arquivos pra escolher um backup.
+    pickRestoreFile() {
+      this.$refs.restoreInput.click();
+    },
+
+    // Lê o arquivo escolhido e, se for um backup válido, pede confirmação.
+    async onRestoreFileChosen(event) {
+      const input = event.target;
+      const file = input.files?.[0];
+      input.value = '';
+      if (!file) return;
+      try {
+        this.restorePending = parseBackup(await file.text());
+      } catch (error) {
+        this.showToast(error instanceof BackupError ? error.message : 'Não foi possível ler o arquivo.');
+      }
+    },
+
+    cancelRestore() {
+      this.restorePending = null;
+    },
+
+    // Substitui os dados deste aparelho pelos do backup confirmado.
+    async confirmRestore() {
+      const backup = this.restorePending;
+      if (!backup) return;
+      try {
+        await restoreBackup(backup);
+      } catch {
+        this.showToast('Não foi possível restaurar. Seus dados atuais foram mantidos.');
+        return;
+      }
+      this.restorePending = null;
+      this.menuOpen = false;
+      this.showOrderForm = false;
+      this.showProductForm = false;
+      await this.setView('pedidosDoDia');
+      await this.refreshBackupStatus();
+      this.showToast('Backup restaurado.');
     },
 
     // Apaga TODOS os dados do app (pedidos, clientes, produtos, histórico) após
     // confirmação — usado só em desenvolvimento/testes (menu com devMode).
     async clearDatabase() {
-      this.historicoMenuOpen = false;
+      this.menuOpen = false;
       if (!confirm('Limpar todos os dados do app? Isso apaga pedidos, clientes, produtos e histórico definitivamente. Essa ação não pode ser desfeita.')) {
         return;
       }
@@ -628,6 +754,7 @@ document.addEventListener('alpine:init', () => {
       }
       this.orderPage = 1;
       this.selectedOrderIds = [];
+      this.refreshBackupStatus();
     },
 
     // Ao digitar na busca de pedidos.
@@ -990,6 +1117,10 @@ document.addEventListener('alpine:init', () => {
         check: { strokeWidth: 2.4, body: '<path d="M20 6 9 17l-5-5"/>' },
         chevronLeft: { strokeWidth: 2, body: '<path d="m15 18-6-6 6-6"/>' },
         chevronRight: { strokeWidth: 2, body: '<path d="m9 18 6-6-6-6"/>' },
+        menu: { strokeWidth: 2, body: '<path d="M4 6h16M4 12h16M4 18h16"/>' },
+        share: { strokeWidth: 2, body: '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/>' },
+        download: { strokeWidth: 2, body: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/>' },
+        shield: { strokeWidth: 2, body: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>' },
         moreVertical: { strokeWidth: 2, body: '<circle cx="12" cy="5" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.8" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.8" fill="currentColor" stroke="none"/>' },
         sort: { strokeWidth: 2, body: '<path d="M8 16v-9M8 16l-3-3M8 16l3-3"/><path d="M16 8v9M16 8l3 3M16 8l-3 3"/>' },
         trash: { strokeWidth: 2, body: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>' },

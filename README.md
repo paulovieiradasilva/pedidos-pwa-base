@@ -87,7 +87,8 @@ Além disso, em `js/printer.js`:
 │
 ├── js/                     # Módulos JavaScript (ES modules)
 │   ├── app.js             # Componente Alpine.js principal wiring da UI
-│   ├── db.js              # Wrapper do IndexedDB (open/get/put/getAll)
+│   ├── db.js              # Wrapper do IndexedDB (open/get/put/getAll/replaceAll)
+│   ├── backup.js          # Backup/restauração dos dados em arquivo .json
 │   ├── customers.js       # Busca/salva cliente por telefone, lista pra autocomplete
 │   ├── products.js        # Catálogo de produtos (preço fixo ou por peso) com seed padrão
 │   ├── orders.js          # Criação/edição de pedidos, cálculo de total e troco, status
@@ -100,6 +101,7 @@ Além disso, em `js/printer.js`:
 ├── tests/                 # Testes automatizados (Vitest)
 │   ├── setup.js           # Setup de testes (carrega fake-indexeddb)
 │   ├── db.test.js
+│   ├── backup.test.js
 │   ├── customers.test.js
 │   ├── products.test.js
 │   ├── orders.test.js
@@ -119,6 +121,17 @@ O app tem 2 telas, alternadas por um menu fixo no topo (sem router, é tudo `x-i
 
 - **Produtos:** CRUD de produtos — nome, marca (opcional) e preço, que pode ser os 3 valores por forma de pagamento (dinheiro/pix/cartão, com sincronização automática entre eles ao digitar) ou um preço único por kg pra produtos "vendidos por peso" (ex: ração). "Excluir" é sempre inativar (soft delete), nunca apagar de vez, pra não quebrar pedidos antigos que já usaram aquele produto. Produto inativo some do formulário de novo pedido mas continua na lista de Produtos (esmaecido, com botão pra reativar).
 - **Pedidos:** lista do dia, com filtro de data, abas de status (Pendente/Impresso/Entregue/Cancelado) e filtro por forma de pagamento. O botão "+ Novo pedido" abre um formulário (telefone com autocomplete de cliente já cadastrado, endereço, carrinho com vários produtos diferentes no mesmo pedido, pagamento, troco) que substitui a lista enquanto está aberto. Cada pedido na aba Pendente/Impresso pode ser editado (reabre o mesmo formulário preenchido) ou cancelado; editar um pedido já impresso volta ele pra Pendente. Pedidos pendentes podem ser selecionados e impressos em lote (mesma conexão Bluetooth), o que move cada um pra "Impresso"; de lá, "Marcar entregue" fecha o ciclo.
+
+### Menu lateral (☰): backup e restauração
+
+Como os dados ficam só no celular (IndexedDB), o botão ☰ no canto direito da navegação abre um menu lateral com:
+
+- **Fazer backup:** gera `pedidos-backup-AAAA-MM-DD.json` e abre a folha de compartilhar do celular (WhatsApp, Drive, e-mail...) — quem escolhe onde guardar é o usuário. Sem suporte a compartilhar arquivo, baixa pra pasta Downloads. Um ponto âmbar no ☰ avisa quando o backup está atrasado (`features.backupReminderDays` em `config.js`, padrão 7 dias; só cobra de quem já tem pedidos).
+- **Restaurar backup:** escolhe um arquivo `.json`, mostra as contagens (pedidos/produtos/clientes) e, ao confirmar, **substitui** todos os dados do aparelho (tudo ou nada). Serve pra trocar de celular ou recuperar depois de perda de dados.
+- **Dados protegidos:** mostra se o navegador aceitou não apagar os dados sozinho (`navigator.storage.persist()`).
+- **Limpar dados:** só com `features.devMode = true`.
+
+O arquivo de backup tem telefone e endereço de clientes: não mandar em grupos.
 
 ### Fluxo de Dados
 

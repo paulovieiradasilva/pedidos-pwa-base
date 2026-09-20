@@ -64,6 +64,14 @@ precisa mais remover e reinstalar a cada `git push` novo.
 Cada cliente fica com seu próprio repositório, link e dados — totalmente
 isolado dos outros.
 
+## Troca ou perda de celular do cliente
+
+Os dados ficam só no celular. Por isso o cliente deve fazer backup pelo
+menu ☰ (**Fazer backup**) e guardar o arquivo fora do aparelho (WhatsApp,
+Drive ou e-mail). No celular novo: abrir o link do app, instalar
+(**⋮ → Adicionar à tela inicial**), abrir o menu ☰ → **Restaurar backup**
+e escolher o arquivo. Sem backup, não há como recuperar os dados.
+
 ## 3. Pedido de customização de um cliente específico
 
 - **Visual/marca** (nome, cor, ícone): editar `config.js`/`manifest.json`

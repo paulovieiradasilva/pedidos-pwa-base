@@ -79,43 +79,150 @@
         <span x-html="icon('history', 22)"></span>
         <span class="text-xs">Histórico</span>
       </button>
-      <!-- Menu "..." de desenvolvedor (Limpar dados) — só aparece com config.js features.devMode = true -->
-      <template x-if="devModeEnabled()">
-        <span class="shrink-0 pb-3 flex items-center">
-          <span class="relative">
+      <!-- Botão ☰ do menu lateral (backup/restaurar). Vira ✕ quando o menu abre e
+           fica acima da gaveta (z-50), no mesmo ponto da tela. O ponto âmbar
+           avisa que o backup está atrasado. -->
+      <span class="shrink-0 pb-3 pl-1 flex items-start relative z-50">
+        <button
+          type="button"
+          class="text-gray-500 w-11 h-11 -mt-1 flex items-center justify-center relative"
+          :aria-label="menuOpen ? 'Fechar menu' : 'Abrir menu'"
+          @click="toggleMenu()"
+        >
+          <span
+            class="pointer-events-none"
+            x-html="menuOpen ? icon('close', 24) : icon('menu', 24)"
+          ></span>
+          <template x-if="backupOverdue && !menuOpen">
+            <span
+              class="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-amber-500 border-2 border-gray-50"
+            ></span>
+          </template>
+        </button>
+      </span>
+    </nav>
+
+    <!-- ===== MENU LATERAL (gaveta à direita): backup, restaurar, dados protegidos =====
+         Fica fora do <nav> pra o overlay cobrir a tela toda. -->
+    <template x-if="menuOpen">
+      <div class="fixed inset-0 z-40 max-w-md mx-auto">
+        <div class="absolute inset-0 bg-gray-900/50" @click="menuOpen = false"></div>
+        <div
+          class="absolute top-0 bottom-0 right-0 w-[78%] bg-white shadow-xl flex flex-col"
+          style="padding-top: max(0.75rem, env(safe-area-inset-top))"
+        >
+          <div class="px-4 pt-3 pb-3 pr-14 border-b border-gray-100">
+            <div class="text-base font-bold">Menu</div>
+            <div class="text-xs text-gray-500">Seus dados</div>
+          </div>
+
+          <div class="flex-1 min-h-0 overflow-y-auto no-scrollbar py-1">
             <button
               type="button"
-              class="text-gray-400 w-8 h-8 flex items-center justify-center"
-              aria-label="Mais opções"
-              @click.stop="toggleHistoricoMenu()"
+              class="flex items-center gap-3 w-full text-left px-4 py-3"
+              @click="shareBackup()"
             >
-              <span
-                class="pointer-events-none"
-                x-html="icon('moreVertical', 18)"
-              ></span>
+              <span class="text-gray-500 shrink-0" x-html="icon('share', 20)"></span>
+              <span class="min-w-0 flex-1">
+                <span class="block text-sm text-gray-800">Fazer backup</span>
+                <span class="block text-xs text-gray-400" x-text="'Último: ' + lastBackupLabel().toLowerCase()"></span>
+                <span class="block text-xs text-gray-400">Envie pro seu WhatsApp, Drive ou e-mail — fora do celular.</span>
+              </span>
+              <template x-if="backupOverdue">
+                <span class="shrink-0 text-[10px] bg-amber-50 text-amber-800 rounded-full px-2 py-0.5">Atrasado</span>
+              </template>
             </button>
-            <template x-if="historicoMenuOpen">
-              <div
-                class="absolute right-0 top-full mt-1 bg-white border rounded-lg shadow-md z-20 overflow-hidden"
-                @click.outside="historicoMenuOpen = false"
-              >
+
+            <button
+              type="button"
+              class="flex items-center gap-3 w-full text-left px-4 py-3"
+              @click="pickRestoreFile()"
+            >
+              <span class="text-gray-500 shrink-0" x-html="icon('download', 20)"></span>
+              <span class="min-w-0">
+                <span class="block text-sm text-gray-800">Restaurar backup</span>
+                <span class="block text-xs text-gray-400">Trocou de celular?</span>
+              </span>
+            </button>
+
+            <div class="flex items-center gap-3 px-4 py-3">
+              <span class="text-gray-500 shrink-0" x-html="icon('shield', 20)"></span>
+              <span class="text-sm text-gray-800 flex-1">Dados protegidos</span>
+              <span
+                class="shrink-0 text-[10px] rounded-full px-2 py-0.5"
+                :class="storagePersisted ? 'bg-green-50 text-green-800' : 'bg-gray-100 text-gray-600'"
+                x-text="storagePersisted ? 'Sim' : 'Não'"
+              ></span>
+            </div>
+
+            <!-- Só com config.js features.devMode = true -->
+            <template x-if="devModeEnabled()">
+              <div class="border-t border-gray-100 mt-1 pt-1">
                 <button
                   type="button"
-                  class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 whitespace-nowrap w-full"
+                  class="flex items-center gap-3 w-full text-left px-4 py-3 text-red-600"
                   @click="clearDatabase()"
                 >
-                  <span
-                    class="pointer-events-none"
-                    x-html="icon('trash', 16)"
-                  ></span>
-                  Limpar dados
+                  <span class="shrink-0" x-html="icon('trash', 20)"></span>
+                  <span class="min-w-0">
+                    <span class="block text-sm">Limpar dados</span>
+                    <span class="block text-xs text-red-300">Só modo desenvolvedor</span>
+                  </span>
                 </button>
               </div>
             </template>
-          </span>
-        </span>
-      </template>
-    </nav>
+          </div>
+
+          <p
+            class="shrink-0 px-4 py-2 border-t border-gray-100 text-[10px] text-gray-300"
+            style="padding-bottom: max(0.5rem, env(safe-area-inset-bottom))"
+            x-text="appVersionInfo"
+          ></p>
+        </div>
+      </div>
+    </template>
+
+    <input
+      type="file"
+      accept="application/json,.json"
+      class="hidden"
+      x-ref="restoreInput"
+      @change="onRestoreFileChosen($event)"
+    />
+
+    <!-- Confirmação antes de substituir os dados pelo backup escolhido -->
+    <template x-if="restorePending">
+      <div class="fixed inset-0 z-[60] max-w-md mx-auto flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-gray-900/50" @click="cancelRestore()"></div>
+        <div class="relative bg-white rounded-2xl p-4 w-full shadow-xl">
+          <div class="text-base font-bold mb-1">Restaurar este backup?</div>
+          <p
+            class="text-xs text-gray-500 mb-3"
+            x-text="'Arquivo de ' + new Date(restorePending.exportedAt).toLocaleDateString('pt-BR') + '.'"
+          ></p>
+          <div class="text-sm mb-3">
+            <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Pedidos</span><span x-text="restorePending.counts.orders"></span></div>
+            <div class="flex justify-between py-1 border-b border-gray-100"><span class="text-gray-500">Produtos</span><span x-text="restorePending.counts.products"></span></div>
+            <div class="flex justify-between py-1"><span class="text-gray-500">Clientes</span><span x-text="restorePending.counts.customers"></span></div>
+          </div>
+          <p class="text-xs text-red-700 mb-3">Isso substitui todos os dados deste aparelho.</p>
+          <button
+            type="button"
+            class="bg-red-600 text-white p-2 w-full rounded-lg font-semibold mb-2"
+            @click="confirmRestore()"
+          >
+            Restaurar
+          </button>
+          <button
+            type="button"
+            class="border border-gray-300 text-gray-700 bg-white p-2 w-full rounded-lg"
+            @click="cancelRestore()"
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </template>
 
     <!-- ===== ÁREA PRINCIPAL (a aba atual) =====
          "flex-1 min-h-0" faz essa área preencher todo o espaço entre a nav
