@@ -140,6 +140,16 @@ Como os dados ficam só no celular (IndexedDB), o botão ☰ no canto direito da
 
 O arquivo de backup tem telefone e endereço de clientes: não mandar em grupos.
 
+### Rotina do dia e fim do dia
+
+O app segue a lógica do caderno: cada dia tem os seus pedidos, e o que não foi entregue no dia é "riscado" no fim dele.
+
+1. **Durante o dia:** o pedido entra como **Pendente**, é impresso (**Impresso**) e, quando o entregador confirma, vai em **Marcar entregue**. Se a entrega não deu certo, o pedido continua em Impresso e pode ter novas tentativas no mesmo dia.
+2. **Recibo perdido ou danificado (ou nova tentativa com outro entregador):** na aba Impresso, menu ⋮ do pedido → **Reimprimir recibo**. Sai marcado como "2ª VIA", o pedido continua Impresso e nada muda no Histórico.
+3. **Fim do dia:** olhe as abas Pendente e Impresso. O que não foi entregue e não teve retorno deve ser **cancelado** ("riscar no caderno"). Só depois imprima o **fechamento de caixa** (Histórico): ele soma só os pedidos entregues e mostra quantos foram cancelados.
+4. **Cliente ligou de novo em outro dia:** faça um **pedido novo** hoje (não reabra o antigo). O autocomplete de telefone/endereço deixa isso rápido.
+5. **Ao voltar em dias antigos:** pedidos Pendente ou Impresso que ficaram abertos **não** devem ser marcados como entregues, pois o valor mudaria o fechamento daquele dia. Cancele-os. Todo cancelamento fica registrado no Histórico.
+
 ### Fluxo de Dados
 
 1. **Entrada:** O proprietário digita o telefone (sugestões de clientes já cadastrados aparecem a partir de 3 dígitos), endereço (se novo), monta o carrinho com um ou mais produtos/quantidades e escolhe a forma de pagamento.

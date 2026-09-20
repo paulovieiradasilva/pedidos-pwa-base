@@ -1,6 +1,32 @@
 import { describe, it, expect } from 'vitest';
 import { buildReceiptBytes, buildClosingReceiptBytes } from '../js/printer.js';
 
+describe('buildReceiptBytes - segunda via', () => {
+  const order = { items: [{ productId: 'agua-10', qty: 1 }], paymentMethod: 'pix', changeFor: null, total: 10, changeAmount: 0 };
+  const customer = { phone: '11988887777', address: 'Rua A, 1' };
+  const products = [{ id: 'agua-10', name: 'Água 20L', brand: 'Marca C', prices: { dinheiro: 10, pix: 10, cartao: 10 }, active: true }];
+  const decode = bytes => new TextDecoder('windows-1252').decode(bytes);
+
+  it('marks a reprint as second copy at the very top, keeping the rest identical', () => {
+    const original = decode(buildReceiptBytes(order, customer, products));
+    const copy = decode(buildReceiptBytes(order, customer, products, { copy: true }));
+
+    expect(copy).toContain('*** 2ª VIA ***');
+    expect(copy.replace('*** 2ª VIA ***\n', '')).toBe(original);
+    expect(copy.indexOf('*** 2ª VIA ***')).toBeLessThan(copy.indexOf('=== PEDIDO ==='));
+  });
+
+  it('does not mark the normal receipt as second copy', () => {
+    expect(decode(buildReceiptBytes(order, customer, products))).not.toContain('2ª VIA');
+    expect(decode(buildReceiptBytes(order, customer, products, {}))).not.toContain('2ª VIA');
+  });
+
+  it('encodes the ordinal "ª" as the single CP1252 byte 0xAA', () => {
+    const bytes = buildReceiptBytes(order, customer, products, { copy: true });
+    expect(Array.from(bytes)).toContain(0xaa);
+  });
+});
+
 describe('buildReceiptBytes', () => {
   it('includes address, product names and total in the printed text', () => {
     const order = {

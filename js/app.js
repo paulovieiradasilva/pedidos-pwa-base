@@ -1037,6 +1037,17 @@ document.addEventListener('alpine:init', () => {
         : [...this.selectedOrderIds, orderId];
     },
 
+    // Monta o recibo do pedido, conecta na impressora (se ainda não estiver) e
+    // imprime. `options.copy` marca como segunda via. Lança erro se falhar.
+    async printOrderReceipt(order, options = {}) {
+      const customer = { phone: order.customerPhone, address: order.address };
+      const bytes = buildReceiptBytes(order, customer, this.products, options);
+      if (!this.printerCharacteristic) {
+        this.printerCharacteristic = await connectPrinter();
+      }
+      await printReceipt(this.printerCharacteristic, bytes);
+    },
+
     // Imprime o recibo de cada pedido selecionado (via Bluetooth) e marca cada
     // um como "impresso"; se a impressão falhar, o pedido continua pendente.
     async printSelectedOrders() {
@@ -1048,12 +1059,7 @@ document.addEventListener('alpine:init', () => {
         const order = this.currentOrders().find(o => o.id === id);
         if (!order) continue;
         try {
-          const customer = { phone: order.customerPhone, address: order.address };
-          const bytes = buildReceiptBytes(order, customer, this.products);
-          if (!this.printerCharacteristic) {
-            this.printerCharacteristic = await connectPrinter();
-          }
-          await printReceipt(this.printerCharacteristic, bytes);
+          await this.printOrderReceipt(order);
           await updateOrderStatus(order.id, 'impresso');
           printed++;
         } catch (err) {
@@ -1067,6 +1073,20 @@ document.addEventListener('alpine:init', () => {
         : `${printed} pedido(s) impresso(s).`);
       this.selectedOrderIds = [];
       await this.refreshOrders();
+    },
+
+    // Reimprime o recibo de um pedido já impresso (recibo perdido, danificado
+    // ou nova tentativa de entrega), marcado como "2ª VIA". Não muda o status
+    // (continua Impresso) nem grava no Histórico: o pedido em si não mudou.
+    async reprintOrder(order) {
+      this.openOrderMenuId = null;
+      try {
+        await this.printOrderReceipt(order, { copy: true });
+        this.showToast('Recibo reimpresso.');
+      } catch (err) {
+        this.printerCharacteristic = null;
+        this.showToast('Falha ao imprimir. Tente novamente.');
+      }
     },
 
     // Imprime o recibo de fechamento de caixa do dia mostrado no Histórico

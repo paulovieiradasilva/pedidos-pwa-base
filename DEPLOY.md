@@ -98,6 +98,14 @@ Teste no celular: ☰ → Fazer backup → Google Drive → entrar com a conta �
 conferir o arquivo `pedidos-backup-AAAA-MM-DD.json` no Drive → em outro
 navegador, ☰ → Restaurar backup → Google Drive.
 
+## Treinar o cliente: rotina de fim do dia
+
+Ao entregar o app, mostre ao cliente a rotina descrita em
+[README.md](README.md#rotina-do-dia-e-fim-do-dia): pedido que não foi
+entregue no dia é **cancelado** no fim dele (como riscar no caderno) e, se o
+cliente ligar de novo, faz-se um **pedido novo**; o fechamento de caixa só
+soma os entregues. Recibo perdido: aba Impresso → ⋮ → **Reimprimir recibo**.
+
 ## 3. Pedido de customização de um cliente específico
 
 - **Visual/marca** (nome, cor, ícone): editar `config.js`/`manifest.json`

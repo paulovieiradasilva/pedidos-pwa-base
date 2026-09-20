@@ -38,11 +38,13 @@ function assembleReceiptBytes(text) {
 }
 
 // Monta o recibo de um único pedido (endereço, itens, total, forma de pagamento
-// e troco) já como bytes prontos para imprimir.
-export function buildReceiptBytes(order, customer, products) {
+// e troco) já como bytes prontos para imprimir. Com `options.copy`, marca o
+// papel como segunda via ("*** 2ª VIA ***") pra não confundir com o original.
+export function buildReceiptBytes(order, customer, products, options = {}) {
   const priceById = Object.fromEntries(products.map(p => [p.id, p]));
 
   const lines = [];
+  if (options.copy) lines.push('*** 2ª VIA ***');
   lines.push('=== PEDIDO ===');
   lines.push(customer.address);
   lines.push('');

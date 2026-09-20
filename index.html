@@ -1035,6 +1035,19 @@
                                 class="absolute right-0 mt-1 bg-white border rounded-lg shadow-md z-20 overflow-hidden"
                                 @click.outside="openOrderMenuId = null"
                               >
+                                <template x-if="orderStatusTab === 'impresso'">
+                                  <button
+                                    type="button"
+                                    class="flex items-center gap-2 px-3 py-2 text-sm text-gray-800 whitespace-nowrap w-full border-b border-gray-100"
+                                    @click="reprintOrder(o)"
+                                  >
+                                    <span
+                                      class="pointer-events-none text-gray-500"
+                                      x-html="icon('printer', 16)"
+                                    ></span>
+                                    Reimprimir recibo
+                                  </button>
+                                </template>
                                 <button
                                   type="button"
                                   class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 whitespace-nowrap"
