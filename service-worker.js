@@ -7,7 +7,7 @@
 // CACHE_NAME nem o "?v=N" do <script> em index.html a cada deploy. Só
 // aumente esse número se precisar forçar a limpeza de tudo que já está em
 // cache (ex.: renomeou/removeu arquivos da lista ASSETS abaixo).
-const CACHE_NAME = 'pedidos-cache-v42';
+const CACHE_NAME = 'pedidos-cache-v43';
 
 // Lista de arquivos pré-carregados em cache na primeira visita, pra já
 // funcionar offline mesmo antes de qualquer requisição bem-sucedida.
@@ -24,6 +24,9 @@ const ASSETS = [
   './js/customers.js',
   './js/products.js',
   './js/orders.js',
+  './js/auditLog.js',
+  './js/backup.js',
+  './js/drive.js',
   './js/printer.js',
   './js/app.js'
 ];
@@ -51,10 +54,13 @@ self.addEventListener('activate', (event) => {
 // Toda requisição de arquivo: tenta a rede primeiro (pra sempre pegar a
 // versão mais nova quando tem internet) e guarda uma cópia da resposta em
 // cache; só usa a cópia em cache se a rede falhar (app offline).
+// "cache: 'no-cache'" faz revalidar com o servidor em vez de usar o cache HTTP
+// do navegador (o GitHub Pages manda max-age=600): sem isso, logo após um
+// deploy o celular podia misturar index.html novo com app.js velho.
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: 'no-cache' })
       .then((response) => {
         const responseClone = response.clone();
         caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));

@@ -103,33 +103,26 @@
     </nav>
 
     <!-- ===== MENU LATERAL (gaveta à direita): backup, restaurar, dados protegidos =====
-         Fica fora do <nav> pra o overlay cobrir a tela toda. -->
+         Fica fora do <nav> pra o overlay cobrir a tela toda. Se o toque dependesse
+         de uma transição terminar (x-show/x-transition), uma transição travada
+         (aba em segundo plano, ao voltar do compartilhar) ou um app.js
+         desatualizado deixariam uma camada invisível bloqueando a tela. Por isso
+         o padrão é FECHADO em classes fixas (sem toque, transparente, fora da
+         tela) e o estado só as remove ao abrir; a animação é só CSS decorativo.
+         (Não trocar por :style: se a expressão falha, o Alpine apaga o style.) -->
     <div
-      class="fixed inset-0 z-40 max-w-md mx-auto overflow-hidden"
-      :class="menuOpen ? '' : 'pointer-events-none'"
+      class="fixed inset-0 z-40 max-w-md mx-auto overflow-hidden pointer-events-none"
+      :class="{ 'pointer-events-none': !menuOpen }"
     >
         <div
-          x-show="menuOpen"
-          x-transition:enter="transition-opacity ease-out duration-300"
-          x-transition:enter-start="opacity-0"
-          x-transition:enter-end="opacity-100"
-          x-transition:leave="transition-opacity ease-in duration-200"
-          x-transition:leave-start="opacity-100"
-          x-transition:leave-end="opacity-0"
-          class="absolute inset-0 bg-gray-900/50"
-          style="display: none"
+          class="absolute inset-0 bg-gray-900/50 opacity-0 transition-opacity duration-300 ease-out"
+          :class="{ 'opacity-0': !menuOpen }"
           @click="menuOpen = false"
         ></div>
         <div
-          x-show="menuOpen"
-          x-transition:enter="transition-transform ease-out duration-300"
-          x-transition:enter-start="translate-x-full"
-          x-transition:enter-end="translate-x-0"
-          x-transition:leave="transition-transform ease-in duration-200"
-          x-transition:leave-start="translate-x-0"
-          x-transition:leave-end="translate-x-full"
-          class="absolute top-0 bottom-0 right-0 w-[78%] bg-white shadow-xl flex flex-col"
-          style="display: none; padding-top: max(0.75rem, env(safe-area-inset-top))"
+          class="absolute top-0 bottom-0 right-0 w-[78%] bg-white shadow-xl flex flex-col translate-x-full transition-transform duration-300 ease-out"
+          :class="{ 'translate-x-full': !menuOpen }"
+          style="padding-top: max(0.75rem, env(safe-area-inset-top))"
         >
           <div class="px-4 pt-3 pb-3 pr-14 border-b border-gray-100">
             <div class="text-base font-bold">Menu</div>
@@ -204,31 +197,18 @@
     <!-- ===== FOLHA DE OPÇÕES (sobe de baixo): onde guardar / de onde restaurar o backup =====
          Conteúdo muda por sheetKind: 'backup' | 'restore' | 'drive' (lista) | 'text' (colar). -->
     <div
-      class="fixed inset-0 z-[55] max-w-md mx-auto overflow-hidden"
-      :class="sheetOpen ? '' : 'pointer-events-none'"
+      class="fixed inset-0 z-[55] max-w-md mx-auto overflow-hidden pointer-events-none"
+      :class="{ 'pointer-events-none': !sheetOpen }"
     >
       <div
-        x-show="sheetOpen"
-        x-transition:enter="transition-opacity ease-out duration-300"
-        x-transition:enter-start="opacity-0"
-        x-transition:enter-end="opacity-100"
-        x-transition:leave="transition-opacity ease-in duration-200"
-        x-transition:leave-start="opacity-100"
-        x-transition:leave-end="opacity-0"
-        class="absolute inset-0 bg-gray-900/50"
-        style="display: none"
+        class="absolute inset-0 bg-gray-900/50 opacity-0 transition-opacity duration-300 ease-out"
+        :class="{ 'opacity-0': !sheetOpen }"
         @click="closeSheet()"
       ></div>
       <div
-        x-show="sheetOpen"
-        x-transition:enter="transition-transform ease-out duration-300"
-        x-transition:enter-start="translate-y-full"
-        x-transition:enter-end="translate-y-0"
-        x-transition:leave="transition-transform ease-in duration-200"
-        x-transition:leave-start="translate-y-0"
-        x-transition:leave-end="translate-y-full"
-        class="absolute left-0 right-0 bottom-0 bg-white rounded-t-2xl px-4 pt-3 shadow-xl max-h-[90%] overflow-y-auto no-scrollbar"
-        style="display: none; padding-bottom: max(1rem, env(safe-area-inset-bottom))"
+        class="absolute left-0 right-0 bottom-0 bg-white rounded-t-2xl px-4 pt-3 shadow-xl max-h-[90%] overflow-y-auto no-scrollbar translate-y-full transition-transform duration-300 ease-out"
+        :class="{ 'translate-y-full': !sheetOpen }"
+        style="padding-bottom: max(1rem, env(safe-area-inset-bottom))"
       >
         <div class="w-9 h-1 bg-gray-300 rounded-full mx-auto mb-3"></div>
 
@@ -1584,7 +1564,7 @@
     <!-- ===== REGISTRO DO SERVICE WORKER (deixa o app funcionar offline/instalável) =====
          O service worker usa estratégia network-first (tenta a rede antes do
          cache), então uma mudança normal em index.html/js/*.js já chega pro
-         usuário sozinha, sem precisar bumpar nada aqui. O "?v=42" abaixo e o
+         usuário sozinha, sem precisar bumpar nada aqui. O "?v=43" abaixo e o
          CACHE_NAME em service-worker.js só precisam ser aumentados juntos
          quando o PRÓPRIO service-worker.js mudar (ex.: essa estratégia de
          cache mudar de novo) — é o que garante que o navegador não continue
@@ -1592,7 +1572,7 @@
     <script>
       if ("serviceWorker" in navigator) {
         navigator.serviceWorker
-          .register("./service-worker.js?v=42")
+          .register("./service-worker.js?v=43")
           .then((reg) => {
             reg.update();
             document.addEventListener("visibilitychange", () => {
