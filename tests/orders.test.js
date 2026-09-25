@@ -206,6 +206,23 @@ describe('orders', () => {
     expect(updated.createdAt).toBe(order.createdAt);
   });
 
+  it('correcting an order marked as entregue by mistake moves it back to impresso in the day list', async () => {
+    const order = await createOrder({
+      customerPhone: '11988887777',
+      items: [{ productId: 'agua-10', qty: 1 }],
+      paymentMethod: 'pix'
+    });
+    await updateOrderStatus(order.id, 'impresso');
+    await updateOrderStatus(order.id, 'entregue');
+
+    await updateOrderStatus(order.id, 'impresso');
+
+    const today = localDateString(new Date(order.createdAt));
+    const list = await listOrdersForDay(today);
+    const found = list.find(o => o.id === order.id);
+    expect(found.status).toBe('impresso');
+  });
+
   it('allows marking an order as cancelado', async () => {
     const order = await createOrder({
       customerPhone: '11988887777',

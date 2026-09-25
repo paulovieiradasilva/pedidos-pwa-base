@@ -1133,6 +1133,24 @@ document.addEventListener('alpine:init', () => {
       await this.refreshOrders();
     },
 
+    // Corrige um pedido marcado como "entregue" por engano, voltando pra
+    // "Impresso" (o recibo já foi impresso, não precisa imprimir de novo).
+    // Pede confirmação mostrando os dados do pedido, já que isso tira o
+    // valor do fechamento de caixa do dia; gera entrada no Histórico.
+    async revertOrderToImpresso(order) {
+      const when = new Date(order.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      const confirmed = confirm(
+        `Reverter este pedido pra Impresso?\n\n` +
+        `${this.formatPhoneMask(order.customerPhone)} — ${order.address ?? 'sem endereço'}\n` +
+        `R$ ${this.formatCurrency(order.total)} — pedido das ${when}\n\n` +
+        `Ele sai do fechamento de caixa de hoje.`
+      );
+      if (!confirmed) return;
+      await updateOrderStatus(order.id, 'impresso');
+      await this.refreshOrders();
+      this.showToast('Pedido revertido pra Impresso.');
+    },
+
     // Abre/fecha o menu "..." de ações de um pedido na lista.
     toggleOrderMenu(orderId) {
       this.openOrderMenuId = this.openOrderMenuId === orderId ? null : orderId;

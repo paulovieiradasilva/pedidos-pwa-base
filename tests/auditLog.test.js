@@ -73,6 +73,17 @@ describe('audit log', () => {
     expect(revert).toBeTruthy();
   });
 
+  it('logs correcting an order marked as entregue by mistake, back to impresso', async () => {
+    const order = await createTestOrder();
+    await updateOrderStatus(order.id, 'impresso');
+    await updateOrderStatus(order.id, 'entregue');
+    await updateOrderStatus(order.id, 'impresso');
+    const entries = await logEntriesFor(order.id);
+    const revert = entries.find(e => e.fromStatus === 'entregue' && e.toStatus === 'impresso');
+    expect(revert).toBeTruthy();
+    expect(revert.orderSnapshot.status).toBe('entregue');
+  });
+
   it('logs an edit with the order snapshot from before the change', async () => {
     const order = await createTestOrder();
     await updateOrder(order.id, {

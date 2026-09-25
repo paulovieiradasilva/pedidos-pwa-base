@@ -1127,6 +1127,13 @@
                               >Marcar entregue</span
                             >
                           </template>
+                          <template x-if="orderStatusTab === 'entregue'">
+                            <span
+                              class="text-blue-600 cursor-pointer"
+                              @click="revertOrderToImpresso(o)"
+                              >Reverter pra Impresso</span
+                            >
+                          </template>
                           <template
                             x-if="orderStatusTab === 'pendente' || orderStatusTab === 'impresso'"
                           >
