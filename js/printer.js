@@ -7,6 +7,9 @@
 const SERVICE_UUID = '000018f0-0000-1000-8000-00805f9b34fb';
 const CHARACTERISTIC_UUID = '00002af1-0000-1000-8000-00805f9b34fb';
 
+// Largura em caracteres de uma impressora térmica de 58mm (fonte padrão).
+const RECEIPT_WIDTH_CHARS = 32;
+
 const ESC_INIT = new Uint8Array([0x1b, 0x40]); // ESC @
 const ESC_CODEPAGE_WPC1252 = new Uint8Array([0x1b, 0x74, 0x10]); // ESC t 16 - select WPC1252 codepage
 
@@ -20,6 +23,16 @@ function encodeLatin1(text) {
   return bytes;
 }
 
+// Tira acentos e indicadores ordinais (á->a, ã->a, ç->c, ª->a...) antes de
+// imprimir. Testado numa impressora clone real (GAO MPT-II/GOOJPRT): o comando
+// de página de código abaixo (WPC1252) é ignorado por ela — provavelmente usa
+// CP437 por padrão — e qualquer caractere acima de 0x7F simplesmente não sai
+// no papel. Sem acento é a única forma testada que garante que o texto todo
+// aparece, em vez de depender da tabela de código certa desse clone.
+function stripDiacritics(text) {
+  return text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+}
+
 // Formata uma quantidade em gramas como texto de kg (ex.: 1500 -> "1,5kg").
 function gramsToKgLabel(grams) {
   const kg = grams / 1000;
@@ -29,7 +42,7 @@ function gramsToKgLabel(grams) {
 // Junta os comandos ESC/POS de inicialização + seleção de codepage com o texto
 // já codificado, produzindo os bytes finais prontos para enviar à impressora.
 function assembleReceiptBytes(text) {
-  const body = encodeLatin1(text);
+  const body = encodeLatin1(stripDiacritics(text));
   const result = new Uint8Array(ESC_INIT.length + ESC_CODEPAGE_WPC1252.length + body.length);
   result.set(ESC_INIT, 0);
   result.set(ESC_CODEPAGE_WPC1252, ESC_INIT.length);
@@ -46,6 +59,11 @@ export function buildReceiptBytes(order, customer, products, options = {}) {
   const lines = [];
   if (options.copy) lines.push('*** 2ª VIA ***');
   lines.push('=== PEDIDO ===');
+  const dateLabel = new Date(order.createdAt).toLocaleString('pt-BR', {
+    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+  });
+  // Pedidos de antes dessa mudança não têm dailyNumber — mostra só a data.
+  lines.push(order.dailyNumber != null ? `Pedido #${order.dailyNumber} - ${dateLabel}` : dateLabel);
   lines.push(customer.address);
   lines.push('');
   for (const item of order.items) {
@@ -60,6 +78,11 @@ export function buildReceiptBytes(order, customer, products, options = {}) {
   if (order.paymentMethod === 'dinheiro' && order.changeFor) {
     lines.push(`Troco para R$ ${order.changeFor.toFixed(2)} (devolver R$ ${order.changeAmount.toFixed(2)})`);
   }
+  lines.push('');
+  // Linha tracejada no fim de cada recibo — ajuda a separar um pedido do
+  // próximo quando vários são impressos em sequência pra uma rota de entrega.
+  // 32 caracteres = largura de uma impressora de 58mm.
+  lines.push('-'.repeat(RECEIPT_WIDTH_CHARS));
   lines.push('\n\n');
 
   return assembleReceiptBytes(lines.join('\n'));
@@ -134,16 +157,36 @@ export function buildClosingReceiptBytes(orders, dateLabel, products = [], optio
   return assembleReceiptBytes(lines.join('\n'));
 }
 
-// Abre o seletor de dispositivos Bluetooth do navegador, conecta na impressora
-// e retorna a "characteristic" GATT usada para enviar os bytes do recibo.
-export async function connectPrinter() {
-  const device = await navigator.bluetooth.requestDevice({
-    acceptAllDevices: true,
-    optionalServices: [SERVICE_UUID]
-  });
+// Guarda o último aparelho escolhido nesta sessão da página, pra poder
+// reconectar sem abrir o seletor de novo (a impressora Bluetooth desconecta
+// sozinha depois de um tempo parada). Some ao recarregar a página.
+let cachedDevice = null;
+
+async function getCharacteristic(device) {
   const server = await device.gatt.connect();
   const service = await server.getPrimaryService(SERVICE_UUID);
   return service.getCharacteristic(CHARACTERISTIC_UUID);
+}
+
+// Conecta na impressora e retorna a "characteristic" GATT usada para enviar
+// os bytes do recibo. Se já tiver conectado antes nesta sessão, tenta
+// reconectar no mesmo aparelho em silêncio (sem abrir o seletor); só abre o
+// seletor de novo se essa reconexão falhar ou for a primeira vez.
+export async function connectPrinter(bluetooth = navigator.bluetooth) {
+  if (cachedDevice) {
+    try {
+      return await getCharacteristic(cachedDevice);
+    } catch {
+      cachedDevice = null;
+    }
+  }
+  const device = await bluetooth.requestDevice({
+    acceptAllDevices: true,
+    optionalServices: [SERVICE_UUID]
+  });
+  const characteristic = await getCharacteristic(device);
+  cachedDevice = device;
+  return characteristic;
 }
 
 // Envia os bytes do recibo para a impressora em pedaços pequenos, porque o

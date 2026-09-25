@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createOrder, updateOrder, listOrdersForDay, localDateString, updateOrderStatus } from '../js/orders.js';
 import { saveProduct } from '../js/products.js';
+import { put, getAll } from '../js/db.js';
 
 beforeEach(async () => {
   await saveProduct({ id: 'agua-10', name: 'Água 20L', brand: 'Marca C', prices: { dinheiro: 10, pix: 9, cartao: 11 } });
@@ -215,5 +216,48 @@ describe('orders', () => {
     const today = localDateString(new Date(order.createdAt));
     const list = await listOrdersForDay(today);
     expect(list.find(o => o.id === order.id).status).toBe('cancelado');
+  });
+
+  describe('dailyNumber', () => {
+    // Outros testes deste arquivo já criaram pedidos "hoje" e não limpam o
+    // banco entre si, então não dá pra assumir que o próximo número é 1 —
+    // só que ele segue de onde os pedidos de hoje já criados pararam.
+    async function todaysOrderCount() {
+      const today = localDateString(new Date());
+      return (await getAll('orders')).filter(o => localDateString(new Date(o.createdAt)) === today).length;
+    }
+
+    it('numbers orders sequentially through the day, starting from what already exists today', async () => {
+      const before = await todaysOrderCount();
+
+      const first = await createOrder({ customerPhone: '11988887777', items: [{ productId: 'agua-10', qty: 1 }], paymentMethod: 'pix' });
+      const second = await createOrder({ customerPhone: '11988887777', items: [{ productId: 'agua-10', qty: 1 }], paymentMethod: 'pix' });
+
+      expect(first.dailyNumber).toBe(before + 1);
+      expect(second.dailyNumber).toBe(before + 2);
+    });
+
+    it('does not count orders from other days', async () => {
+      await put('orders', {
+        id: 'old-order', dailyNumber: 1, customerPhone: '11988887777', items: [], paymentMethod: 'pix',
+        total: 0, changeAmount: 0, status: 'entregue', createdAt: '2020-01-01T10:00:00.000Z'
+      });
+      const before = await todaysOrderCount();
+
+      const order = await createOrder({ customerPhone: '11988887777', items: [{ productId: 'agua-10', qty: 1 }], paymentMethod: 'pix' });
+
+      expect(order.dailyNumber).toBe(before + 1);
+    });
+
+    it('keeps a permanent number: editing the order does not change it', async () => {
+      const order = await createOrder({ customerPhone: '11988887777', items: [{ productId: 'agua-10', qty: 1 }], paymentMethod: 'pix' });
+
+      const updated = await updateOrder(order.id, {
+        customerPhone: order.customerPhone, address: 'Novo endereço',
+        items: [{ productId: 'agua-10', qty: 2 }], paymentMethod: 'pix'
+      });
+
+      expect(updated.dailyNumber).toBe(order.dailyNumber);
+    });
   });
 });

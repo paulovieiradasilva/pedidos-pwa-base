@@ -44,8 +44,17 @@ export async function createOrder(input) {
     ? Math.max(input.changeFor - total, 0)
     : 0;
 
+  const now = new Date();
+  const createdAt = now.toISOString();
+  // Número do pedido no dia (reinicia a cada dia) — só pra facilitar identificar
+  // o pedido ("pedido 3 de hoje") no recibo. É fixado na criação e nunca muda
+  // depois, mesmo se outro pedido do dia for excluído.
+  const dailyNumber = (await getAll('orders'))
+    .filter(o => localDateString(new Date(o.createdAt)) === localDateString(now)).length + 1;
+
   const order = {
     id: crypto.randomUUID(),
+    dailyNumber,
     customerPhone: input.customerPhone,
     address: input.address ?? null,
     items: input.items,
@@ -54,7 +63,7 @@ export async function createOrder(input) {
     total,
     changeAmount,
     status: 'pendente',
-    createdAt: new Date().toISOString()
+    createdAt
   };
 
   await put('orders', order);
