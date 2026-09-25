@@ -138,6 +138,27 @@ document.addEventListener('alpine:init', () => {
       await this.setView('pedidosDoDia');
       this.loadAppVersionInfo();
       this.requestPersistentStorage();
+      this.keepScreenAwake();
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') this.keepScreenAwake();
+      });
+    },
+
+    // Pede ao navegador pra não deixar a tela apagar sozinha por inatividade,
+    // enquanto o app estiver na tela (evita perder a conexão com a
+    // impressora Bluetooth por causa do bloqueio automático). Não impede o
+    // usuário de bloquear a tela na mão nem evita a desconexão se ele trocar
+    // de app — o navegador solta o "wake lock" sozinho nesses casos, e aqui
+    // só pedimos de novo quando o app volta a ficar visível. Sem suporte no
+    // navegador, não faz nada (silencioso).
+    async keepScreenAwake() {
+      if (!('wakeLock' in navigator)) return;
+      try {
+        await navigator.wakeLock.request('screen');
+      } catch {
+        // recusado (ex.: aba em segundo plano nesse instante) — tenta de
+        // novo na próxima vez que o app ficar visível.
+      }
     },
 
     // Descobre quando o index.html mudou de verdade no servidor (cabeçalho
