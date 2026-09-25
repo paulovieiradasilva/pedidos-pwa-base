@@ -1039,13 +1039,23 @@ document.addEventListener('alpine:init', () => {
 
     // Monta o recibo do pedido, conecta na impressora (se ainda não estiver) e
     // imprime. `options.copy` marca como segunda via. Lança erro se falhar.
+    // A impressora Bluetooth desconecta sozinha depois de um tempo parada (e o
+    // celular às vezes nem avisa até tentar escrever). Se a característica que
+    // já tínhamos falhar, reconecta (connectPrinter tenta em silêncio, sem
+    // reabrir o seletor) e tenta mandar o recibo de novo uma única vez, pra não
+    // precisar de um segundo toque só pra "acordar" a conexão.
     async printOrderReceipt(order, options = {}) {
       const customer = { phone: order.customerPhone, address: order.address };
       const bytes = buildReceiptBytes(order, customer, this.products, options);
       if (!this.printerCharacteristic) {
         this.printerCharacteristic = await connectPrinter();
       }
-      await printReceipt(this.printerCharacteristic, bytes);
+      try {
+        await printReceipt(this.printerCharacteristic, bytes);
+      } catch (error) {
+        this.printerCharacteristic = await connectPrinter();
+        await printReceipt(this.printerCharacteristic, bytes);
+      }
     },
 
     // Imprime o recibo de cada pedido selecionado (via Bluetooth) e marca cada
