@@ -1085,6 +1085,33 @@ document.addEventListener('alpine:init', () => {
       await this.refreshOrders();
     },
 
+    // Reimprime o recibo de vários pedidos selecionados de uma vez (aba
+    // Impresso) — útil pra reimprimir uma rota inteira. Cada um sai marcado
+    // "2ª VIA"; não muda o status nem grava no Histórico, igual à reimpressão
+    // individual (reprintOrder).
+    async reprintSelectedOrders() {
+      const ids = [...this.selectedOrderIds];
+      let printed = 0;
+      let failed = 0;
+
+      for (const id of ids) {
+        const order = this.currentOrders().find(o => o.id === id);
+        if (!order) continue;
+        try {
+          await this.printOrderReceipt(order, { copy: true });
+          printed++;
+        } catch (err) {
+          this.printerCharacteristic = null;
+          failed++;
+        }
+      }
+
+      this.showToast(failed > 0
+        ? `${printed} de ${ids.length} recibos reimpressos. ${failed} falhou/falharam.`
+        : `${printed} recibo(s) reimpresso(s).`);
+      this.selectedOrderIds = [];
+    },
+
     // Reimprime o recibo de um pedido já impresso (recibo perdido, danificado
     // ou nova tentativa de entrega), marcado como "2ª VIA". Não muda o status
     // (continua Impresso) nem grava no Histórico: o pedido em si não mudou.

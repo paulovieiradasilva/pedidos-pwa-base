@@ -894,12 +894,12 @@
                 </div>
 
                 <template
-                  x-if="orderStatusTab === 'pendente' && selectedOrderIds.length > 0"
+                  x-if="(orderStatusTab === 'pendente' || orderStatusTab === 'impresso') && selectedOrderIds.length > 0"
                 >
                   <button
                     class="w-full mb-3 p-2 bg-blue-600 text-white rounded-lg text-sm font-semibold"
-                    @click="printSelectedOrders()"
-                    x-text="'Imprimir selecionados (' + selectedOrderIds.length + ')'"
+                    @click="orderStatusTab === 'pendente' ? printSelectedOrders() : reprintSelectedOrders()"
+                    x-text="(orderStatusTab === 'pendente' ? 'Imprimir selecionados (' : 'Reimprimir selecionados (') + selectedOrderIds.length + ')'"
                   ></button>
                 </template>
 
@@ -1002,7 +1002,7 @@
                     >
                       <div class="flex justify-between items-baseline gap-2">
                         <span class="flex items-center gap-2 min-w-0">
-                          <template x-if="orderStatusTab === 'pendente'">
+                          <template x-if="orderStatusTab === 'pendente' || orderStatusTab === 'impresso'">
                             <input
                               type="checkbox"
                               :checked="selectedOrderIds.includes(o.id)"
