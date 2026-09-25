@@ -1140,7 +1140,7 @@ document.addEventListener('alpine:init', () => {
     async revertOrderToImpresso(order) {
       const when = new Date(order.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
       const confirmed = confirm(
-        `Reverter este pedido pra Impresso?\n\n` +
+        `Voltar este pedido para Impresso?\n\n` +
         `${this.formatPhoneMask(order.customerPhone)} — ${order.address ?? 'sem endereço'}\n` +
         `R$ ${this.formatCurrency(order.total)} — pedido das ${when}\n\n` +
         `Ele sai do fechamento de caixa de hoje.`
@@ -1148,7 +1148,7 @@ document.addEventListener('alpine:init', () => {
       if (!confirmed) return;
       await updateOrderStatus(order.id, 'impresso');
       await this.refreshOrders();
-      this.showToast('Pedido revertido pra Impresso.');
+      this.showToast('Pedido voltou para Impresso.');
     },
 
     // Abre/fecha o menu "..." de ações de um pedido na lista.
@@ -1332,6 +1332,7 @@ document.addEventListener('alpine:init', () => {
         location: { strokeWidth: 2, body: '<path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12Z"/><circle cx="12" cy="10" r="2.5"/>' },
         receipt: { strokeWidth: 2, body: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M8 7h8M8 11h8M8 15h5"/>' },
         tag: { strokeWidth: 2, body: '<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1.5"/>' },
+        undo: { strokeWidth: 2, body: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>' },
         printer: { strokeWidth: 2, body: '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>' },
         history: { strokeWidth: 2, body: '<path d="M3 12a9 9 0 1 0 2.64-6.36"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>' }
       };

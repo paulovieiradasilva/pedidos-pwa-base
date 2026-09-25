@@ -1021,7 +1021,7 @@
                           ></span>
                           <span
                             class="relative"
-                            x-show="orderStatusTab === 'pendente' || orderStatusTab === 'impresso'"
+                            x-show="orderStatusTab === 'pendente' || orderStatusTab === 'impresso' || orderStatusTab === 'entregue'"
                           >
                             <button
                               type="button"
@@ -1052,17 +1052,32 @@
                                     Reimprimir recibo
                                   </button>
                                 </template>
-                                <button
-                                  type="button"
-                                  class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 whitespace-nowrap"
-                                  @click="deleteOrder(o)"
-                                >
-                                  <span
-                                    class="pointer-events-none"
-                                    x-html="icon('trash', 16)"
-                                  ></span>
-                                  Excluir definitivamente
-                                </button>
+                                <template x-if="orderStatusTab === 'entregue'">
+                                  <button
+                                    type="button"
+                                    class="flex items-center gap-2 px-3 py-2 text-sm text-gray-800 whitespace-nowrap w-full"
+                                    @click="revertOrderToImpresso(o)"
+                                  >
+                                    <span
+                                      class="pointer-events-none text-gray-500"
+                                      x-html="icon('undo', 16)"
+                                    ></span>
+                                    Voltar para impresso
+                                  </button>
+                                </template>
+                                <template x-if="orderStatusTab !== 'entregue'">
+                                  <button
+                                    type="button"
+                                    class="flex items-center gap-2 px-3 py-2 text-sm text-red-600 whitespace-nowrap"
+                                    @click="deleteOrder(o)"
+                                  >
+                                    <span
+                                      class="pointer-events-none"
+                                      x-html="icon('trash', 16)"
+                                    ></span>
+                                    Excluir definitivamente
+                                  </button>
+                                </template>
                               </div>
                             </template>
                           </span>
@@ -1110,42 +1125,53 @@
                             ></span>
                           </template>
                         </span>
-                        <div class="flex gap-3 text-xs font-medium">
+                        <div class="flex gap-4">
                           <template
                             x-if="orderStatusTab === 'pendente' || orderStatusTab === 'impresso'"
                           >
-                            <span
-                              class="text-blue-600 cursor-pointer"
+                            <button
+                              type="button"
+                              class="flex flex-col items-center gap-0.5"
                               @click="startEditOrder(o)"
-                              >Editar</span
                             >
+                              <span
+                                class="w-7 h-7 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"
+                                x-html="icon('edit', 15)"
+                              ></span>
+                              <span class="text-[10px] font-medium text-blue-600">Editar</span>
+                            </button>
                           </template>
                           <template x-if="orderStatusTab === 'impresso'">
-                            <span
-                              class="text-blue-600 cursor-pointer"
+                            <button
+                              type="button"
+                              class="flex flex-col items-center gap-0.5"
                               @click="markOrderDelivered(o)"
-                              >Marcar entregue</span
                             >
-                          </template>
-                          <template x-if="orderStatusTab === 'entregue'">
-                            <span
-                              class="text-blue-600 cursor-pointer"
-                              @click="revertOrderToImpresso(o)"
-                              >Reverter pra Impresso</span
-                            >
+                              <span
+                                class="w-7 h-7 rounded-full bg-green-50 text-green-600 flex items-center justify-center"
+                                x-html="icon('check', 14)"
+                              ></span>
+                              <span class="text-[10px] font-medium text-green-600">Entregue</span>
+                            </button>
                           </template>
                           <template
                             x-if="orderStatusTab === 'pendente' || orderStatusTab === 'impresso'"
                           >
-                            <span
-                              class="text-red-600 cursor-pointer"
+                            <button
+                              type="button"
+                              class="flex flex-col items-center gap-0.5"
                               @click="cancelOrder(o)"
-                              >Cancelar</span
                             >
+                              <span
+                                class="w-7 h-7 rounded-full bg-red-50 text-red-600 flex items-center justify-center"
+                                x-html="icon('close', 15)"
+                              ></span>
+                              <span class="text-[10px] font-medium text-red-600">Cancelar</span>
+                            </button>
                           </template>
                           <template x-if="orderStatusTab === 'cancelado'">
                             <span
-                              class="text-blue-600 cursor-pointer"
+                              class="text-blue-600 cursor-pointer text-xs font-medium"
                               @click="revertOrderToPending(o)"
                               >Reverter pra pendente</span
                             >
